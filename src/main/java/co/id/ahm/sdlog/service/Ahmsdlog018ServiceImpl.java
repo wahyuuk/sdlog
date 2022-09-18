@@ -4,6 +4,7 @@ import co.id.ahm.sdlog.dao.Log018AhmsdlogHdrMngqqdosRepository;
 import co.id.ahm.sdlog.dao.Log018AhmsdlogTxnDdsRepository;
 import co.id.ahm.sdlog.dao.Log018AhmsdlogTxnDpColorRepository;
 import co.id.ahm.sdlog.model.*;
+import co.id.ahm.sdlog.vo.Log018VoMaintainUpdateRequest;
 import co.id.ahm.sdlog.vo.Log018VoManageTableUpdateRequest;
 import co.id.ahm.sdlog.vo.Log018VoPembukaanDoRequest;
 import org.hibernate.Session;
@@ -14,7 +15,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 @Service
@@ -172,60 +174,79 @@ public class Ahmsdlog018ServiceImpl {
     }
 
     @Transactional
-    public ResponseEntity<?> savePembukaan(Log018VoPembukaanDoRequest req) {
+    public ResponseEntity<?> savePembukaan(Log018VoPembukaanDoRequest req) throws Exception {
         saveHeaderManagePlDo(req);
 
         return ResponseEntity.ok("Success");
     }
 
-    private void saveHeaderManagePlDo(Log018VoPembukaanDoRequest req) {
+    private void saveHeaderManagePlDo(Log018VoPembukaanDoRequest req) throws Exception {
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+        List<Date> dateMaintains = new ArrayList<>();
 
-        req.getRows().forEach(row -> {
-            row.getData().forEach(d -> {
+        for (Map<String, Object> row : req.getRows()) {
+            for (Map<String, Object> d : req.getRequestDo()) {
                 Session session = sessionFactory.openSession();
                 Transaction transaction = session.beginTransaction();
+                String shipto = (String) d.get("shipto");
+                Date dateMaintain = format.parse((String) row.get("date"));
 
                 AhmsdlogHdrMngPldos data = new AhmsdlogHdrMngPldos();
                 AhmsdlogHdrMngPldosPk pk = new AhmsdlogHdrMngPldosPk();
 
                 pk.setDocNumber(req.getDocNumber());
                 pk.setMdCode(req.getMdCode());
-                pk.setShipto((String) d.get("shipto"));
-                pk.setShiptoMdCode("G5Z");
-                pk.setDateMaintain(row.getDate());
-
-                Boolean status = (Boolean) d.get("status");
+                pk.setShipto(shipto);
+                pk.setShiptoMdCode((String) d.get("mdCode"));
+                pk.setDateMaintain(dateMaintain);
 
                 AhmsdlogHdrMngPldos dataTemp = session.get(AhmsdlogHdrMngPldos.class, pk);
 
                 if(dataTemp != null) {
-                    dataTemp.setStatus(status ? "Y" : "T");
+                    dataTemp.setStatus((String) row.get(shipto));
                     session.update(dataTemp);
+
+                    if(!row.get(shipto).equals("T") && dataTemp.getStatus().equals("Y")) {
+                        dateMaintains.add(dateMaintain);
+                    }
                 } else {
                     data.setId(pk);
-                    data.setStatus(status ? "Y" : "T");
+                    data.setStatus((String) row.get(shipto));
                     session.save(data);
                 }
 
                 transaction.commit();
                 session.close();
 
-                if(status) {
+                if(row.get(shipto).equals("Y")) {
                     updateMaintainDataOnUpdatePembukaan(req.getDocNumber(),
-                            req.getMdCode(), row.getDate(), pk.getShipto());
+                            req.getMdCode(), dateMaintain, pk.getShipto());
                 }
 
-            });
-        });
+            }
+        }
+
+        if (!dateMaintains.isEmpty()) {
+            deleteManageHeaderAndDetailMaintain(req.getDocNumber(),
+                    req.getMdCode(), dateMaintains);
+        }
+    }
+
+    private void deleteManageHeaderAndDetailMaintain(String documentNumber, String mdCode,
+                                                     List<Date> dateMaintains) {
+
+        Date minDate = Collections.min(dateMaintains);
+
+        System.out.println(minDate);
     }
 
     private void updateMaintainDataOnUpdatePembukaan(String documentNumber, String mdCode,
-                                                     LocalDate dateMaintain, String shipto) {
+                                                     Date dateMaintain, String shipto) {
 
         Map<String, Object> data = hdrMngqqdosRepository.getManageTableData(documentNumber, mdCode);
 
         if(data == null) {
-            data = dpColorRepository.getManageTable(documentNumber, mdCode, dateMaintain.getMonth().getValue(),
+            data = dpColorRepository.getManageTable(documentNumber, mdCode, dateMaintain.getMonth(),
                     dateMaintain.getYear());
         }
 
@@ -330,6 +351,44 @@ public class Ahmsdlog018ServiceImpl {
                 session.update(dataTemp);
             }
 
+            transaction.commit();
+            session.close();
+        }
+    }
+
+    public void updateMaintainTable(List<Log018VoMaintainUpdateRequest> req) throws ParseException {
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+
+        for (Log018VoMaintainUpdateRequest row: req) {
+            Session session = sessionFactory.openSession();
+            Transaction transaction = session.beginTransaction();
+
+            AhmsdlogDtlMntcQqs data = new AhmsdlogDtlMntcQqs();
+            AhmsdlogDtlMntcQqsPk pk = new AhmsdlogDtlMntcQqsPk();
+            Date dateMaintain = format.parse(row.getDateMaintain());
+
+            pk.setDocNumber(row.getDocNumber());
+            pk.setMdCode(row.getMdCode());
+            pk.setMdCodeHeader(row.getMdCode());
+            pk.setDateMaintain(dateMaintain);
+            pk.setDocNumberHeader(row.getDocNumber());
+            pk.setUnitGroupId(row.getUnitGroupId());
+            pk.setMcTypeId(row.getMcTypeId());
+            pk.setColorId(row.getColorId());
+            pk.setShipto(row.getShipto());
+            pk.setShiptoMdCode(row.getShiptoMd());
+            data.setId(pk);
+
+            data = session.get(AhmsdlogDtlMntcQqs.class, pk);
+
+            data.setDoVinOld(row.getDoVinOld());
+            data.setDoVinNew(row.getDoVinNew());
+            data.setQtyRemainHminVinOld(row.gethVinOld());
+            data.setQtyRemainHminVinNew(row.gethVinNew());
+            data.setQtyRemainHVinOld(row.gethVinOld());
+            data.setQtyRemainHVinNew(row.gethVinNew());
+
+            session.update(data);
             transaction.commit();
             session.close();
         }

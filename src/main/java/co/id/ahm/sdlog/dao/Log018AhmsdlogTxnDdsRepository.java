@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import javax.persistence.Query;
 import java.time.LocalDate;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,12 +20,11 @@ public class Log018AhmsdlogTxnDdsRepository {
     private SessionFactory sessionFactory;
 
     public Map<String, Object> getDDsVin(String docNumber, String mdCode, String mcTypeId,
-                                         String colorId, LocalDate dateMaintain) {
+                                         String colorId, Date dateMaintain) {
         Session session = sessionFactory.openSession();
         session.beginTransaction();
 
-        String sqlQuery = String.format(getDDsVinQuery(), dateMaintain.getDayOfMonth());
-        System.out.println(sqlQuery);
+        String sqlQuery = String.format(getDDsVinQuery(), dateMaintain.getDate());
 
         Query query = session.createNativeQuery(sqlQuery)
                 .setParameter("docNum", docNumber)
@@ -38,10 +38,10 @@ public class Log018AhmsdlogTxnDdsRepository {
             String vin = (String) row.get("VVIN");
             if(vin.equals("Old")) {
                 res.put("vinOld", (Integer) row.get("NDAY"
-                        .concat(String.valueOf(dateMaintain.getDayOfMonth()))));
+                        .concat(String.valueOf(dateMaintain.getDate()))));
             } else {
                 res.put("vinNew", (Integer) row.get("NDAY"
-                        .concat(String.valueOf(dateMaintain.getDayOfMonth()))));
+                        .concat(String.valueOf(dateMaintain.getDate()))));
             }
         }
 

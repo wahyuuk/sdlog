@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -55,7 +56,7 @@ public class Log018Rest {
     }
 
     @PostMapping("/pembukaan-save")
-    public @ResponseBody ResponseEntity<?> pembukaanSave(@RequestBody Log018VoPembukaanDoRequest req) {
+    public @ResponseBody ResponseEntity<?> pembukaanSave(@RequestBody Log018VoPembukaanDoRequest req) throws Exception {
         return ahmsdlog018Service.savePembukaan(req);
     }
 
@@ -63,7 +64,7 @@ public class Log018Rest {
     public @ResponseBody ResponseEntity<?> getPembukaan() {
         return ResponseEntity
                 .ok(hdrMngPldosRepository
-                        .getPlanDo("a", "b", 12, 2022, Arrays.asList("S039", "S063")));
+                        .getPlanDo("DPC-202212001", "G5Z", 12, 2022, Arrays.asList("S039", "S063")));
     }
 
     @GetMapping("/")
@@ -71,10 +72,18 @@ public class Log018Rest {
         return "manage-table";
     }
 
-    @PostMapping
+    @PostMapping("/maintain-update")
     public @ResponseBody ResponseEntity<?>
-            updateMaintainTable(@RequestBody List<Log018VoMaintainUpdateTableRequest> req) {
+            updateMaintainTable(@RequestBody List<Log018VoMaintainUpdateRequest> req) throws ParseException {
 
-        return null;
+        ahmsdlog018Service.updateMaintainTable(req);
+        return ResponseEntity.ok("Success");
+    }
+
+    @PostMapping("/get-date-maintain")
+    public @ResponseBody ResponseEntity<?> getDateMaintainList(
+            @RequestBody Log018VoMaintainTableRequest req) {
+
+        return ResponseEntity.ok(headerMaintainRepository.getDateMaintainList(req));
     }
 }

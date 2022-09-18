@@ -4,6 +4,7 @@ import javax.persistence.Column;
 import javax.persistence.Embeddable;
 import java.io.Serializable;
 import java.time.LocalDate;
+import java.util.Date;
 import java.util.Map;
 
 @Embeddable
@@ -37,7 +38,7 @@ public class AhmsdlogDtlMntcQqsPk implements Serializable {
     private String colorId;
 
     @Column(name = "DMNTN", nullable = false)
-    private LocalDate dateMaintain;
+    private Date dateMaintain;
 
     public String getDocNumber() {
         return docNumber;
@@ -111,11 +112,11 @@ public class AhmsdlogDtlMntcQqsPk implements Serializable {
         this.colorId = colorId;
     }
 
-    public LocalDate getDateMaintain() {
+    public Date getDateMaintain() {
         return dateMaintain;
     }
 
-    public void setDateMaintain(LocalDate dateMaintain) {
+    public void setDateMaintain(Date dateMaintain) {
         this.dateMaintain = dateMaintain;
     }
 }
