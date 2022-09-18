@@ -1,9 +1,6 @@
 package co.id.ahm.sdlog.rest;
 
-import co.id.ahm.sdlog.dao.AhmsdlogHdrMngPldosRepository;
-import co.id.ahm.sdlog.dao.Log018AhmsdlogHdrMngqqdosRepository;
-import co.id.ahm.sdlog.dao.Log018AhmsdlogHdrMntcQqsRepository;
-import co.id.ahm.sdlog.dao.Log018AhmsdlogTxnDpColorRepository;
+import co.id.ahm.sdlog.dao.*;
 import co.id.ahm.sdlog.service.Ahmsdlog018ServiceImpl;
 import co.id.ahm.sdlog.service.Log018GenerateExcelService;
 import co.id.ahm.sdlog.service.Log018ReadExcelService;
@@ -46,6 +43,9 @@ public class Log018Rest {
 
     @Autowired
     private Log018ReadExcelService readExcelService;
+
+    @Autowired
+    private Log018AhmsdlogDtlMntcQqsRepository dtlMntcQqsRepository;
 
     @GetMapping("/dp-color")
     public @ResponseBody
@@ -128,5 +128,26 @@ public class Log018Rest {
         res.setHeader(header, headerValue);
 
         generateExcelService.export(res, req);
+    }
+
+    @PostMapping("/report-mctype")
+    public @ResponseBody ResponseEntity<?> getReportByMcType() {
+        return ResponseEntity.ok(dtlMntcQqsRepository.getReportByMcTypeColor("DPC-202212001", "G5Z"));
+    }
+
+    @PostMapping("/generate-excel-mctype")
+    public void generateExcelMcType(@RequestBody Map<String, Object> req,
+                              HttpServletResponse res) throws IOException {
+
+        res.setContentType("application/octet-stream");
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
+        String dt = sdf.format(new Date());
+
+        String header = "Content-Disposition";
+        String headerValue = "attachment; filename=REPORT_BY_MC_TYPE" + dt + ".xlsx";
+
+        res.setHeader(header, headerValue);
+
+        generateExcelService.exportByMcType(res, req);
     }
 }

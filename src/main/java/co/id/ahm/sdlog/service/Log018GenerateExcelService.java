@@ -22,7 +22,6 @@ public class Log018GenerateExcelService {
 
     private void initWorkbook() {
         this.workbook = new XSSFWorkbook();
-        this.sheet = workbook.createSheet("Manage Req Do");
         this.cellStyle = workbook.createCellStyle();
         initStyle();
     }
@@ -54,12 +53,227 @@ public class Log018GenerateExcelService {
     public void export(HttpServletResponse response,
                        Map<String, Object> data) throws IOException {
         initWorkbook();
+        this.sheet = workbook.createSheet("Manage Req Do");
         createHeaderRow(data);
         ServletOutputStream outputStream = response.getOutputStream();
 
         workbook.write(outputStream);
         workbook.close();
         outputStream.close();
+    }
+
+    public void exportByMcType(HttpServletResponse response,
+                               Map<String, Object> data) throws IOException {
+        initWorkbook();
+        this.sheet = workbook.createSheet("Report By MC Type Color");
+        setHeaderMcType(data);
+        ServletOutputStream outputStream = response.getOutputStream();
+
+        workbook.write(outputStream);
+        workbook.close();
+        outputStream.close();
+    }
+
+    private void setHeaderMcType(Map<String, Object> data) {
+        List<Map<String, Object>> requestDo = (List<Map<String, Object>>) data.get("requestDo");
+
+        Row row = sheet.createRow(0);
+
+        Cell cell = row.createCell(0);
+        cell.setCellValue("MC Type Color");
+        cell.setCellStyle(footerHeaderCellStyle());
+        sheet.autoSizeColumn(0);
+
+        cell = row.createCell(1);
+        cell.setCellValue("MC Type Code");
+        cell.setCellStyle(footerHeaderCellStyle());
+        sheet.autoSizeColumn(1);
+
+        cell = row.createCell(2);
+        cell.setCellValue("MC Type Description");
+        cell.setCellStyle(footerHeaderCellStyle());
+        sheet.autoSizeColumn(2);
+
+        cell = row.createCell(3);
+        cell.setCellValue("MC Color Code");
+        cell.setCellStyle(footerHeaderCellStyle());
+        sheet.autoSizeColumn(3);
+
+        cell = row.createCell(4);
+        cell.setCellValue("MC Color Description");
+        cell.setCellStyle(footerHeaderCellStyle());
+        sheet.autoSizeColumn(4);
+
+        cell = row.createCell(5);
+        cell.setCellValue("Distribution Plan");
+        cell.setCellStyle(footerHeaderCellStyle());
+        sheet.autoSizeColumn(5);
+
+        cell = row.createCell(6);
+        cell.setCellValue("Request Distribution Open");
+        cell.setCellStyle(footerHeaderCellStyle());
+        sheet.autoSizeColumn(6);
+
+
+        Row rowQq = sheet.createRow(1);
+
+        Integer colIndex = 6;
+        colIndex = setMcTypeHeader(requestDo, rowQq, colIndex, row);
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, 6, requestDo.size() + 7));
+
+        Cell cellTotal = rowQq.createCell(colIndex);
+        cellTotal.setCellValue("Total");
+        cellTotal.setCellStyle(footerHeaderCellStyle());
+        sheet.autoSizeColumn(colIndex);
+
+        colIndex +=1;
+        cellTotal = rowQq.createCell(colIndex);
+        cellTotal.setCellValue("Selisih");
+        cellTotal.setCellStyle(footerHeaderCellStyle());
+        sheet.autoSizeColumn(colIndex);
+
+        colIndex +=1;
+        Integer colIndexDo = colIndex;
+
+        colIndex = setMcTypeHeader(requestDo, rowQq, colIndex, row);
+
+        cellTotal = rowQq.createCell(colIndex);
+        cellTotal.setCellValue("Total");
+        cellTotal.setCellStyle(footerHeaderCellStyle());
+        sheet.autoSizeColumn(colIndex);
+
+        colIndex +=1;
+        cellTotal = rowQq.createCell(colIndex);
+        cellTotal.setCellValue("Selisih");
+        cellTotal.setCellStyle(footerHeaderCellStyle());
+        sheet.autoSizeColumn(colIndex);
+
+        cell = row.createCell(colIndexDo);
+        cell.setCellValue("Distribution Open");
+        cell.setCellStyle(footerHeaderCellStyle());
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, colIndexDo, colIndex));
+
+        cell = row.createCell(colIndex+1);
+        cell.setCellValue("DO Open Percentage");
+        cell.setCellStyle(footerHeaderCellStyle());
+        sheet.autoSizeColumn(colIndex +1);
+
+        Cell cellQq = rowQq.createCell(colIndex+1);
+        cellQq.setCellStyle(footerHeaderCellStyle());
+
+        sheet.addMergedRegion(new CellRangeAddress(0, 1, colIndex+1, colIndex+1));
+
+        for(int i= 0; i<=5; i++) {
+            Cell cellHead = rowQq.createCell(i);
+            cellHead.setCellStyle(footerHeaderCellStyle());
+            sheet.addMergedRegion(new CellRangeAddress(0, 1, i, i));
+        }
+
+        serMcTypeBodyRow(data);
+    }
+
+    private Integer setMcTypeHeader(List<Map<String, Object>> requestDo, Row rowQq, Integer colIndex, Row row) {
+        for(Map<String, Object> rowData : requestDo) {
+            Cell cellQq = rowQq.createCell(colIndex);
+            String shiptoMd = (String) rowData.get("shiptoMd");
+            String city = (String) rowData.get("city");
+
+            cellQq.setCellValue(shiptoMd.concat(" - " + city));
+            cellQq.setCellStyle(footerHeaderCellStyle());
+            sheet.autoSizeColumn(colIndex);
+
+            if(colIndex != 6 && colIndex != requestDo.size() + 6) {
+                Cell cell = row.createCell(colIndex);
+                cell.setCellStyle(footerHeaderCellStyle());
+            }
+            colIndex++;
+        }
+        return colIndex;
+    }
+
+    private void serMcTypeBodyRow(Map<String, Object> data) {
+        List<Map<String, Object>> rows = (List<Map<String, Object>>) data.get("rows");
+        List<Map<String, Object>> requestDo = (List<Map<String, Object>>) data.get("requestDo");
+
+        Integer rowIndex = 2;
+        for(Map<String, Object> rowData: rows) {
+            Row row = sheet.createRow(rowIndex);
+            Cell cell = row.createCell(0);
+            cell.setCellValue((String) rowData.get("mcTypeColor"));
+
+            cell = row.createCell(1);
+            cell.setCellValue((String) rowData.get("mcTypeId"));
+            cell.setCellStyle(cellStyle);
+
+            cell = row.createCell(2);
+            cell.setCellValue((String) rowData.get("mcTypeDesc"));
+            cell.setCellStyle(cellStyle);
+
+            cell = row.createCell(3);
+            cell.setCellValue((String) rowData.get("colorCode"));
+            cell.setCellStyle(cellStyle);
+
+            cell = row.createCell(4);
+            cell.setCellValue((String) rowData.get("colorDesc"));
+            cell.setCellStyle(cellStyle);
+
+            cell = row.createCell(5);
+            cell.setCellValue((Integer) rowData.get("disPlan"));
+            cell.setCellStyle(cellStyle);
+
+            Integer qqIndex = 6;
+            qqIndex = setMcTypeRow(requestDo, rowData, row, qqIndex,true);
+
+            Integer reqTotal = (Integer) rowData.get("totalReqDo");
+            Integer reqSelisih = (Integer) rowData.get("selisihReqDo");
+
+            cell = row.createCell(qqIndex);
+            cell.setCellValue(reqTotal);
+            cell.setCellStyle(cellStyle);
+
+            qqIndex++;
+            cell = row.createCell(qqIndex);
+            cell.setCellValue(reqSelisih);
+            cell.setCellStyle(cellStyle);
+
+            qqIndex = setMcTypeRow(requestDo, rowData, row, qqIndex + 1, false);
+
+            reqTotal = (Integer) rowData.get("totalDo");
+            reqSelisih = (Integer) rowData.get("selisihDo");
+            String percent = (String) rowData.get("percentageDo");
+
+            cell = row.createCell(qqIndex);
+            cell.setCellValue(reqTotal);
+            cell.setCellStyle(cellStyle);
+
+            cell = row.createCell(qqIndex + 1);
+            cell.setCellValue(reqSelisih);
+            cell.setCellStyle(cellStyle);
+
+            cell = row.createCell(qqIndex + 2);
+            cell.setCellValue(percent);
+            cell.setCellStyle(cellStyle);
+
+            rowIndex++;
+        }
+    }
+
+    private Integer setMcTypeRow(List<Map<String, Object>> requestDo, Map<String, Object> rowData,
+                                 Row row, Integer qqIndex, Boolean isDo) {
+        Cell cell;
+        for(Map<String, Object> qq: requestDo) {
+            String shipto = (String) qq.get("shipto");
+            String name = !isDo ? "Do" : "ReqDo";
+
+            Integer reqDoOpen = (Integer) rowData.get(shipto.concat(name));
+
+            cell = row.createCell(qqIndex);
+            cell.setCellValue(reqDoOpen);
+            cell.setCellStyle(cellStyle);
+
+            qqIndex++;
+        }
+        return qqIndex;
     }
 
     private void createHeaderRow(Map<String, Object> data) {

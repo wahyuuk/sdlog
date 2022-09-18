@@ -52,29 +52,36 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <input class="form-control" type="file" id="ahmsdlog018p03UploadFile">
-        <button class="btn btn-primary" onclick="ahmsdlog018p02GenerateExcel()">Generate Excel</button>
-        <button class="btn btn-primary" onclick="ahmsdlog018p03UploadExcel()">Upload Excel</button>
-        <button class="btn btn-primary" id="ahmsdlog018p03UploadSubmit" onclick="ahmsdlog018p02ManageOnUpdate()">Submit</button>
-    </div>
-    <div id="ahmsdlog018ManageUploadContainer">
+
+<div class="container">
+    <button class="btn btn-primary" onclick="ahmsdlog018p04ExportToExcel()">Generate Excel</button>
+    <div id="ahmsdlog018p04ReportMcTypeContainer">
 
     </div>
-    <div id="ahmsdlog018ManageTableContainer">
+</div>
+<!--    <div class="container">-->
+<!--        <input class="form-control" type="file" id="ahmsdlog018p03UploadFile">-->
+<!--        <button class="btn btn-primary" onclick="ahmsdlog018p02GenerateExcel()">Generate Excel</button>-->
+<!--        <button class="btn btn-primary" onclick="ahmsdlog018p03UploadExcel()">Upload Excel</button>-->
+<!--        <button class="btn btn-primary" id="ahmsdlog018p03UploadSubmit" onclick="ahmsdlog018p02ManageOnUpdate()">Submit</button>-->
+<!--    </div>-->
+<!--    <div id="ahmsdlog018ManageUploadContainer">-->
 
-    </div>
-    <div class="container">
-        <button class="btn btn-primary" onclick="ahmsdlog018p02ManageOnUpdate()">Update</button>
-    </div>
+<!--    </div>-->
+<!--    <div id="ahmsdlog018ManageTableContainer">-->
 
-    <div id="ahmsdlog018p02PembukaanDoTableContainer">
+<!--    </div>-->
+<!--    <div class="container">-->
+<!--        <button class="btn btn-primary" onclick="ahmsdlog018p02ManageOnUpdate()">Update</button>-->
+<!--    </div>-->
 
-    </div>
+<!--    <div id="ahmsdlog018p02PembukaanDoTableContainer">-->
 
-    <div class="container">
-        <button class="btn btn-primary" onclick="ahmsdlog018p02PembukaanDoOnUpdate()">Update</button>
-    </div>
+<!--    </div>-->
+
+<!--    <div class="container">-->
+<!--        <button class="btn btn-primary" onclick="ahmsdlog018p02PembukaanDoOnUpdate()">Update</button>-->
+<!--    </div>-->
 
 <!--    <div class="container">-->
 <!--        <div class="input-group date" id="ahmsdlog018p02MaintainDateUpdate">-->
@@ -107,6 +114,7 @@
     let ahmsdlog018p02MaintainRequestData = null;
     let ahmsdlog018p02MaintainDateList = null;
     let ahmsdlog018IsUpload = false;
+    let ahmsdlog018p04ReportMcTypeData = null;
 
     const shiptoData = [
         {
@@ -124,16 +132,214 @@
     let ahmsdlog018p02RequestApi = [];
 
     $(document).ready(() => {
-        ahmsdlog018p02ManageTable();
-        ahmsdlog018p02PembukaanDoTable();
-        $('#ahmsdlog018p02MaintainDateUpdate').datetimepicker({
-            format: 'DD MMM YYYY',
-            viewMode: 'days',
-            locale: 'en'
-        });
-        $('#ahmsdlog018p03UploadSubmit').attr("disabled", true);
+        // ahmsdlog018p02ManageTable();
+        // ahmsdlog018p02PembukaanDoTable();
+        // $('#ahmsdlog018p02MaintainDateUpdate').datetimepicker({
+        //     format: 'DD MMM YYYY',
+        //     viewMode: 'days',
+        //     locale: 'en'
+        // });
+        // $('#ahmsdlog018p03UploadSubmit').attr("disabled", true);
         // ahmsdlog018p02MaintainTable();
+        ahmsdlog018p04ReportByMCType();
     });
+
+    function ahmsdlog018p04ReportByMCType() {
+        $.ajax({
+           url: '/report-mctype',
+           type: 'POST',
+           success: (res) => {
+               ahmsdlog018p04ReportMcTypeData = res;
+               $('#ahmsdlog018p04ReportMcTypeContainer').html(ahmsdlog018p04ReportByMCTypeTableInit());
+               const table = $('#ahmsdlog018p04ReportMcTypeTable');
+               table.bootstrapTable({
+                   data: res.rows
+               })
+           }
+        });
+    }
+
+    function ahmsdlog018p04ReportByMCTypeTableInit() {
+        const data = ahmsdlog018p04ReportMcTypeData;
+
+        let template = `
+            <table id="ahmsdlog018p04ReportMcTypeTable"
+                data-pagination="true" data-side-pagination="client" data-server-sort="false">
+                <thead>
+                    <th data-valign="middle" data-sortable="true" data-halign="center" data-field="mcTypeColor">MC Type Color</th>
+                    <th data-valign="middle" data-sortable="true" data-halign="center" data-field="mcTypeId">MC Type Code</th>
+                    <th data-valign="middle" data-sortable="true" data-halign="center" data-field="mcTypeDesc">MC Type Description</th>
+                    <th data-valign="middle" data-sortable="true" data-halign="center" data-field="colorCode">MC Color Code</th>
+                    <th data-valign="middle" data-sortable="true" data-halign="center" data-field="colorDesc">MC Color Description</th>
+                    <th data-valign="middle" data-sortable="true" data-halign="center" data-field="distPlan">Distribution Plan</th>
+                    ${ahmsdlog018p04McTypeTableHead()}
+                    <th data-valign="middle" data-halign="center" data-formatter="ahmsdlog018p04DoPercentageFormatter">
+                        DO Percentage
+                    </th>
+                </thead>
+            </table>
+        `;
+
+        return template;
+    }
+
+    function ahmsdlog018p04McTypeTableHead() {
+        const data = ahmsdlog018p04ReportMcTypeData;
+        let template = '';
+
+        for(let i = 0; i < data.requestDo.length; i++) {
+            template += `
+                <th data-valign="middle" data-sortable="true" data-halign="center" data-field="${data.requestDo[i].shipto}requestDo">
+                    Request Do Open</br>
+                    ${data.requestDo[i].shiptoMd} - ${data.requestDo[i].city}
+                </th>
+            `;
+
+            if(i == data.requestDo.length - 1) {
+                template += `
+                <th data-valign="middle" data-halign="center" data-formatter="ahmsdlog018p04ReqDoTotalFormatter">
+                    Total
+                </th>
+                <th data-valign="middle" data-halign="center" data-formatter="ahmsdlog018p04ReqDoSelisihFormatter">
+                    Selisih
+                </th>
+            `;
+            }
+        }
+
+        for(let i = 0; i < data.requestDo.length; i++) {
+            template += `
+                <th data-valign="middle" data-sortable="true" data-halign="center" data-field="${data.requestDo[i].shipto}Do">
+                    Do Open</br>
+                    ${data.requestDo[i].shiptoMd} - ${data.requestDo[i].city}
+                </th>
+            `;
+
+            if(i == data.requestDo.length - 1) {
+                template += `
+                <th data-valign="middle" data-halign="center" data-formatter="ahmsdlog018p04DoTotalFormatter">
+                    Total
+                </th>
+                <th data-valign="middle" data-halign="center" data-formatter="ahmsdlog018p04DoSelisihFormatter">
+                    Selisih
+                </th>
+            `;
+            }
+        }
+
+        return template;
+    }
+
+    function ahmsdlog018p04ReqDoTotalFormatter(value, row, index) {
+        let total = 0;
+
+        $.each(ahmsdlog018p04ReportMcTypeData.requestDo, (i, v) => {
+           total +=  ahmsdlog018p04ReportMcTypeData.rows[index][`${v.shipto}requestDo`];
+        });
+
+        return total;
+    }
+
+    function ahmsdlog018p04ReqDoSelisihFormatter(value, row, index) {
+        let total = 0;
+
+        $.each(ahmsdlog018p04ReportMcTypeData.requestDo, (i, v) => {
+            total +=  ahmsdlog018p04ReportMcTypeData.rows[index][`${v.shipto}requestDo`];
+        });
+
+        return row.distPlan - total;
+    }
+
+    function ahmsdlog018p04DoTotalFormatter(value, row, index) {
+        let total = 0;
+
+        $.each(ahmsdlog018p04ReportMcTypeData.requestDo, (i, v) => {
+            total +=  ahmsdlog018p04ReportMcTypeData.rows[index][`${v.shipto}Do`];
+        });
+
+        return total;
+    }
+
+    function ahmsdlog018p04DoSelisihFormatter(value, row, index) {
+        let total = 0;
+
+        $.each(ahmsdlog018p04ReportMcTypeData.requestDo, (i, v) => {
+            total +=  ahmsdlog018p04ReportMcTypeData.rows[index][`${v.shipto}Do`];
+        });
+
+        return row.distPlan - total;
+    }
+
+    function ahmsdlog018p04DoPercentageFormatter(value, row, index) {
+        let totalDo = 0;
+        let totalReqDo = 0;
+
+        $.each(ahmsdlog018p04ReportMcTypeData.requestDo, (i, v) => {
+            totalDo +=  ahmsdlog018p04ReportMcTypeData.rows[index][`${v.shipto}Do`];
+            totalReqDo +=  ahmsdlog018p04ReportMcTypeData.rows[index][`${v.shipto}requestDo`];
+        });
+
+        const percent = ((totalDo * 100) / totalReqDo);
+
+        return Math.round(percent ? percent : 0) + "%";
+    }
+
+    function ahmsdlog018p04ExportToExcel() {
+        let data = ahmsdlog018p04ReportMcTypeData;
+        let dataReq = {
+            requestDo: data.requestDo,
+            rows: []
+        };
+
+        $.each(data.rows, (i, v) => {
+            let dataTemp = {
+                mcTypeColor: v.mcTypeColor,
+                mcTypeId: v.mcTypeId,
+                colorCode: v.colorCode,
+                mcTypeDesc: v.mcTypeDesc,
+                colorDesc: v.colorDesc,
+                disPlan: v.distPlan
+            };
+
+            let totalReqDo = 0;
+            let totalDo = 0;
+           $.each(data.requestDo, (j, value) => {
+                dataTemp[`${value.shipto}ReqDo`] = v[`${value.shipto}requestDo`];
+                dataTemp[`${value.shipto}Do`] = v[`${value.shipto}Do`];
+
+                totalReqDo += v[`${value.shipto}requestDo`];
+                totalDo += v[`${value.shipto}Do`];
+           });
+
+           const percent = ((totalDo * 100) / totalReqDo);
+           dataTemp.totalReqDo = totalReqDo;
+           dataTemp.totalDo = totalDo;
+           dataTemp.selisihReqDo = v.distPlan - totalReqDo;
+           dataTemp.selisihDo = v.distPlan - totalDo;
+           dataTemp.percentageDo = Math.round(percent ? percent : 0) + "%";
+
+           dataReq.rows.push(dataTemp);
+        });
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/generate-excel-mctype');
+        xhr.setRequestHeader('content-type', 'application/json');
+        xhr.responseType = 'blob';
+        xhr.send(JSON.stringify(dataReq));
+
+        xhr.onload = function () {
+            let url = xhr.getResponseHeader('Content-Disposition');
+            url = url.split("=")[1];
+
+            const blob = this.response;
+            let downloadLink = window.document.createElement('a');
+            downloadLink.href = window.URL.createObjectURL(blob);
+            downloadLink.download = url;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+    }
 
     function ahmsdlog018GenerateMonth(date) {
         const dateTemp = new Date(`01-${date}`);
