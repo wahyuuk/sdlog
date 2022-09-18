@@ -31,17 +31,23 @@ public class Log018AhmsdlogHdrMngqqdosRepository {
         List<Map<String, Object>> resData = new ArrayList<>();
 
         Map<String, Object> dataTemp = new HashMap<>();
-        Set<String> listOfqq = new HashSet<>();
+        Set<Map<String, Object>> listOfqq = new HashSet<>();
 
         Integer rows = 0;
         for (Map<String, Object> data: listData){
 
-            Object unitGroup = data.get("RSDMNGQQ_MSDUNTGP_NID".toLowerCase());
+            Object unitGroup = data.get("VCODE");
             Object mcTypeId = data.get("RSDMNGQQ_DSDMCT_RSDMCT_VMCTYPEID".toLowerCase());
             Object colorCode =  data.get("RSDMNGQQ_DSDMCT_VCOLORID".toLowerCase());
             String shipto = (String) data.get("DSDSHPQQ_MSDQQ_VSHIPTO".toLowerCase());
 
-            listOfqq.add((String) data.get("DSDSHPQQ_MSDQQ_VSHIPTO".toLowerCase()));
+            Map<String, Object> qq = new HashMap<>();
+            qq.put("shipto", data.get("VSHIPTO"));
+            qq.put("mdCode", data.get("VMDCODE"));
+            qq.put("city", data.get("VCITY"));
+            qq.put("shiptoMd", data.get("SHIPTOMD"));
+
+            listOfqq.add(qq);
 
             if(rows == 0) {
                 setManageData(dataTemp, data, unitGroup, mcTypeId, colorCode, shipto);
@@ -89,6 +95,7 @@ public class Log018AhmsdlogHdrMngqqdosRepository {
                                Object unitGroup, Object mcTypeId, Object colorCode, String shipto) {
 
         dataTemp.put("unitGroup", unitGroup);
+        dataTemp.put("unitGroupId", data.get("RSDMNGQQ_MSDUNTGP_NID".toLowerCase()));
         dataTemp.put("mcTypeId", mcTypeId);
         dataTemp.put("mcTypeColor", mcTypeId + "" + colorCode);
         dataTemp.put("colorCode", colorCode);
@@ -102,16 +109,24 @@ public class Log018AhmsdlogHdrMngqqdosRepository {
     }
 
     private String manageTableQuery() {
-        return "select b.*, a.NDOVINOLD as vin_old, a.NDOVINNEW as vin_new, 'Revo Fit' as marketingDesc," +
-                "'Black Blue' as colorDesc " +
-                "from ahmsdlog_hdrmngqqdos a, ahmsdlog_dtlmngqqdos b\n" +
+        return "select q.VSHIPTO, q.VMDCODE, q.VCITY, concat(q.VSHIPTO, q.VMDCODE) as SHIPTOMD,\n" +
+                "       q.VFLAGREG,\n" +
+                "       b.*, a.NDOVINOLD as vin_old, a.NDOVINNEW as vin_new, g.VUGDESC as marketingDesc,g.VCODE,\n" +
+                "(\n" +
+                "    SELECT VCOLORDESC FROM AHMSDLOG_DTLMCTYPES WHERE VCOLORID = b.rsdmngqq_dsdmct_vcolorid LIMIT 1\n" +
+                ") as colorDesc\n" +
+                "from ahmsdlog_hdrmngqqdos a, ahmsdlog_dtlmngqqdos b,\n" +
+                "     ahmsdlog_mstunitgrps g, ahmsdlog_mstqqs q\n" +
                 "where a.RSDSHPQQ_VDOCNOSHPQQ = b.RSDMNGQQ_RSDSHPQQ_VDOCNOSHPQQ\n" +
-                "and  a.RSDSHPQQ_VMDCODE = b.RSDMNGQQ_RSDSHPQQ_VMDCODE\n" +
-                "and a.DSDMCT_RSDMCT_VMCTYPEID = b.RSDMNGQQ_DSDMCT_RSDMCT_VMCTYPEID\n" +
-                "and a.MSDUNTGP_NID = b.RSDMNGQQ_MSDUNTGP_NID\n" +
-                "and a.DSDMCT_VCOLORID = b.RSDMNGQQ_DSDMCT_VCOLORID\n" +
-                "and b.RSDMNGQQ_RSDSHPQQ_VDOCNOSHPQQ = :docNumber\n" +
-                "and b.RSDMNGQQ_RSDSHPQQ_VMDCODE = :mdcode\n" +
+                "  and  a.RSDSHPQQ_VMDCODE = b.RSDMNGQQ_RSDSHPQQ_VMDCODE\n" +
+                "  and a.DSDMCT_RSDMCT_VMCTYPEID = b.RSDMNGQQ_DSDMCT_RSDMCT_VMCTYPEID\n" +
+                "  and a.MSDUNTGP_NID = b.RSDMNGQQ_MSDUNTGP_NID\n" +
+                "  and a.DSDMCT_VCOLORID = b.RSDMNGQQ_DSDMCT_VCOLORID\n" +
+                "  and a.msduntgp_nid = g.NID\n" +
+                "  and q.VSHIPTO = b.dsdshpqq_msdqq_vshipto\n" +
+                "  and q.VMDCODE = b.dsdshpqq_msdqq_vmdcode\n" +
+                "  and b.RSDMNGQQ_RSDSHPQQ_VDOCNOSHPQQ = :docNumber\n" +
+                "  and b.RSDMNGQQ_RSDSHPQQ_VMDCODE = :mdcode\n" +
                 "order by b.rsdmngqq_msduntgp_nid, b.rsdmngqq_dsdmct_rsdmct_vmctypeid, b.rsdmngqq_dsdmct_vcolorid";
     }
 

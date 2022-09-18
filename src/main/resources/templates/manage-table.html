@@ -52,36 +52,45 @@
     </style>
 </head>
 <body>
-<!--    <div id="ahmsdlog018ManageTableContainer">-->
+    <div class="container">
+        <input class="form-control" type="file" id="ahmsdlog018p03UploadFile">
+        <button class="btn btn-primary" onclick="ahmsdlog018p02GenerateExcel()">Generate Excel</button>
+        <button class="btn btn-primary" onclick="ahmsdlog018p03UploadExcel()">Upload Excel</button>
+        <button class="btn btn-primary" id="ahmsdlog018p03UploadSubmit" onclick="ahmsdlog018p02ManageOnUpdate()">Submit</button>
+    </div>
+    <div id="ahmsdlog018ManageUploadContainer">
 
-<!--    </div>-->
-<!--    <div class="container">-->
-<!--        <button class="btn btn-primary" onclick="ahmsdlog018p02ManageOnUpdate()">Update</button>-->
-<!--    </div>-->
+    </div>
+    <div id="ahmsdlog018ManageTableContainer">
 
-<!--    <div id="ahmsdlog018p02PembukaanDoTableContainer">-->
+    </div>
+    <div class="container">
+        <button class="btn btn-primary" onclick="ahmsdlog018p02ManageOnUpdate()">Update</button>
+    </div>
 
-<!--    </div>-->
+    <div id="ahmsdlog018p02PembukaanDoTableContainer">
 
-<!--    <div class="container">-->
-<!--        <button class="btn btn-primary" onclick="ahmsdlog018p02PembukaanDoOnUpdate()">Update</button>-->
-<!--    </div>-->
+    </div>
 
     <div class="container">
-        <div class="input-group date" id="ahmsdlog018p02MaintainDateUpdate">
-            <input id="ahmsdlog018p02MaintainDateUpdateInput" type="text"
-                   class="form-control" value="04-2021"/>
-            <span class="input-group-addon">
-            <span class="glyphicon glyphicon-calendar"></span>
-        </span>
-        </div>
-        <div id="ahmsdlog018p02MaintainTableContainer"></div>
-        <div>
-            <button class="btn btn-primary" id="ahmsdlog018p02MaintainPrev" onclick="ahmsdlog018p02MaintainPrev()">Prev</button>
-            <button class="btn btn-primary" id="ahmsdlog018p02MaintainNext" onclick="ahmsdlog018p02MaintainNext()">Next</button>
-            <button class="btn btn-primary" id="ahmsdlog018p02MaintainUpdate" onclick="ahmsdlog018p02MaintainOnUpdate()">Update</button>
-        </div>
+        <button class="btn btn-primary" onclick="ahmsdlog018p02PembukaanDoOnUpdate()">Update</button>
     </div>
+
+<!--    <div class="container">-->
+<!--        <div class="input-group date" id="ahmsdlog018p02MaintainDateUpdate">-->
+<!--            <input id="ahmsdlog018p02MaintainDateUpdateInput" type="text"-->
+<!--                   class="form-control" value="04-2021"/>-->
+<!--            <span class="input-group-addon">-->
+<!--            <span class="glyphicon glyphicon-calendar"></span>-->
+<!--        </span>-->
+<!--        </div>-->
+<!--        <div id="ahmsdlog018p02MaintainTableContainer"></div>-->
+<!--        <div>-->
+<!--            <button class="btn btn-primary" id="ahmsdlog018p02MaintainPrev" onclick="ahmsdlog018p02MaintainPrev()">Prev</button>-->
+<!--            <button class="btn btn-primary" id="ahmsdlog018p02MaintainNext" onclick="ahmsdlog018p02MaintainNext()">Next</button>-->
+<!--            <button class="btn btn-primary" id="ahmsdlog018p02MaintainUpdate" onclick="ahmsdlog018p02MaintainOnUpdate()">Update</button>-->
+<!--        </div>-->
+<!--    </div>-->
 
 </body>
 <script th:src="@{/js/jQuery-2.1.3.min.js}"></script>
@@ -97,6 +106,8 @@
     let ahmsdlog018p02PembukaanDoData = null;
     let ahmsdlog018p02MaintainRequestData = null;
     let ahmsdlog018p02MaintainDateList = null;
+    let ahmsdlog018IsUpload = false;
+
     const shiptoData = [
         {
             shipto: 'S063'
@@ -113,20 +124,21 @@
     let ahmsdlog018p02RequestApi = [];
 
     $(document).ready(() => {
-        // ahmsdlog018p02ManageTable();
-        // ahmsdlog018p02PembukaanDoTable();
+        ahmsdlog018p02ManageTable();
+        ahmsdlog018p02PembukaanDoTable();
         $('#ahmsdlog018p02MaintainDateUpdate').datetimepicker({
             format: 'DD MMM YYYY',
             viewMode: 'days',
             locale: 'en'
         });
-        ahmsdlog018p02MaintainTable();
+        $('#ahmsdlog018p03UploadSubmit').attr("disabled", true);
+        // ahmsdlog018p02MaintainTable();
     });
 
     function ahmsdlog018GenerateMonth(date) {
         const dateTemp = new Date(`01-${date}`);
 
-        return dateTemp.getMonth();
+        return dateTemp.getMonth() + 1;
     }
 
     function ahmsdlog018GenerateYear(date) {
@@ -163,25 +175,35 @@
         const mdCode = 'G5Z';
         const period = 'Dec-2022';
 
+        if(ahmsdlog018IsUpload) {
+            $('#ahmsdlog018ManageUploadContainer').html(ahmsdlog018p02ManageTableHead(ahmsdlog018p02RequestDoData));
+
+            const table = $('#ahmsdlog018p02ManageUploadTable');
+            table.bootstrapTable({
+                data: ahmsdlog018p02RequestDoData.rows
+            });
+
+            ahmsdlog018p02ManageTableFooter();
+
+            return;
+        }
+
         $.ajax({
             url: `/dp-color?no=${docNumber}&code=${mdCode}`,
             type: "GET",
             success: (res) => {
                 ahmsdlog018p02RequestDoData = res;
                 ahmsdlog018p02RequestApi = [];
-
                 if(!res.requestDo.length) {
-                    ahmsdlog018p02RequestDoData.requestDo = shiptoData.map(d => d.shipto);
+                    ahmsdlog018p02RequestDoData.requestDo = shiptoData;
                     ahmsdlog018p02IsDataAlready = false;
                 }
 
                 $('#ahmsdlog018ManageTableContainer').html(ahmsdlog018p02ManageTableHead(res));
+
                 const table = $('#ahmsdlog018p02ManageTable');
                 table.bootstrapTable({
-                    data: res.rows,
-                    fixedColumns: true,
-                    fixedNumber: 7,
-                    fixedRightNumber: 1
+                    data: res.rows
                 });
 
                 ahmsdlog018p02ManageTableFooter();
@@ -206,10 +228,10 @@
 
         for (let i = 0; i < ahmsdlog018p02RequestDoData.requestDo.length; i++) {
             const vinOldSum = ahmsdlog018p02RequestDoData.rows
-                .reduce((total, value) => total + value[`${ahmsdlog018p02RequestDoData.requestDo[i]}VinOld`], 0);
+                .reduce((total, value) => total + value[`${ahmsdlog018p02RequestDoData.requestDo[i].shipto}VinOld`], 0);
 
             const vinNewSum = ahmsdlog018p02RequestDoData.rows
-                .reduce((total, value) => total + value[`${ahmsdlog018p02RequestDoData.requestDo[i]}VinNew`], 0);
+                .reduce((total, value) => total + value[`${ahmsdlog018p02RequestDoData.requestDo[i].shipto}VinNew`], 0);
 
             footerHtml += `
                 <td style="font-weight: 700;">
@@ -244,14 +266,19 @@
                 </td>
             `;
 
-        const table = $('#ahmsdlog018p02ManageTable tbody tr:last').after(footerHtml);
+        if(!ahmsdlog018IsUpload) {
+            $('#ahmsdlog018p02ManageTable tbody tr:last').after(footerHtml);
+        } else {
+            $('#ahmsdlog018p02ManageUploadTable tbody tr:last').after(footerHtml);
+        }
     }
 
     function ahmsdlog018p02ManageTableHead() {
         let template = '';
 
         template += `
-            <table id="ahmsdlog018p02ManageTable">
+            <table id="${!ahmsdlog018IsUpload ?
+                            'ahmsdlog018p02ManageTable' : 'ahmsdlog018p02ManageUploadTable'}">
                 <thead>
                     <tr>
                         <th data-valign="middle" data-halign="center" data-field="unitGroup">Unit Group</th>
@@ -278,11 +305,11 @@
         let template = '';
         $.each(ahmsdlog018p02RequestDoData.requestDo, (index, value) => {
            template += `
-                <th data-valign="middle" data-halign="center" data-field="${value}VinOld" data-formatter="ahmsdlog018p02ManageTableVinOldFormatter">
-                    ${value} Vin Old
+                <th data-valign="middle" data-halign="center" data-field="${value.shipto}VinOld" data-formatter="ahmsdlog018p02ManageTableVinOldFormatter">
+                    ${value.shiptoMd} - ${value.city} <br>  Vin Old
                 </th>
-                <th data-valign="middle" data-halign="center" data-field="${value}VinNew" data-formatter="ahmsdlog018p02ManageTableVinNewFormatter">
-                    ${value} Vin New
+                <th data-valign="middle" data-halign="center" data-field="${value.shipto}VinNew" data-formatter="ahmsdlog018p02ManageTableVinNewFormatter">
+                    ${value.shiptoMd} - ${value.city} <br>  Vin New
                 </th>
            `;
         });
@@ -297,6 +324,10 @@
     }
 
     function ahmsdlog018p02ManageTableVinOldFormatter(value, row, index) {
+        if(ahmsdlog018IsUpload) {
+            return `<span id="ahmsdlog018p02DoOld${index}${ahmsdlog018p02Columns}">${value}</span>`;
+        }
+
         return `<input type="number"
                     onchange="ahmsdlog018p02ManageOnChangeVin(event, value, 'Old', ${index}, ${ahmsdlog018p02Columns})"
                     class="form-control"
@@ -307,11 +338,15 @@
     function ahmsdlog018p02ManageTableVinNewFormatter(value, row, index) {
         const lastCol = ahmsdlog018p02RequestDoData.requestDo.length - 1;
 
-        const template = `<input type="number"
+        let template = `<input type="number"
                              onchange="ahmsdlog018p02ManageOnChangeVin(event, value, 'New', ${index}, ${ahmsdlog018p02Columns})"
                              class="form-control"
                              value="${value ? value : 0}"
                              id="ahmsdlog018p02DoNew${index}${ahmsdlog018p02Columns}"/>`;
+
+        if(ahmsdlog018IsUpload) {
+            template = `<span id="ahmsdlog018p02DoNew${index}${ahmsdlog018p02Columns}">${value}</span>`;
+        }
 
         if(ahmsdlog018p02Columns ==  lastCol) {
             ahmsdlog018p02Columns = 0;
@@ -327,8 +362,8 @@
 
         if(ahmsdlog018p02IsDataAlready) {
             $.each(ahmsdlog018p02RequestDoData.requestDo, (i, v) => {
-                total += row[`${v}VinOld`];
-                total += row[`${v}VinNew`];
+                total += row[`${v.shipto}VinOld`];
+                total += row[`${v.shipto}VinNew`];
             });
         }
 
@@ -342,8 +377,8 @@
 
         if(ahmsdlog018p02IsDataAlready) {
             $.each(ahmsdlog018p02RequestDoData.requestDo, (i, v) => {
-                total -= row[`${v}VinOld`];
-                total -= row[`${v}VinNew`];
+                total -= row[`${v.shipto}VinOld`];
+                total -= row[`${v.shipto}VinNew`];
             });
         }
 
@@ -433,18 +468,24 @@
         let data = [];
 
         $.each(ahmsdlog018p02RequestDoData.rows, (i, v) => {
-            $.each(ahmsdlog018p02RequestDoData.requestDo, (j, shipto) => {
-                const vinOld = $(`#ahmsdlog018p02DoOld${i}${j}`).val();
-                const vinNew = $(`#ahmsdlog018p02DoNew${i}${j}`).val();
+            $.each(ahmsdlog018p02RequestDoData.requestDo, (j, s) => {
+                let vinOld = $(`#ahmsdlog018p02DoOld${i}${j}`).val();
+                let vinNew = $(`#ahmsdlog018p02DoNew${i}${j}`).val();
+
+                if(ahmsdlog018IsUpload) {
+                    vinOld = $(`#ahmsdlog018p02DoOld${i}${j}`).text();
+                    vinNew = $(`#ahmsdlog018p02DoNew${i}${j}`).text();
+                }
 
                 let dataReq = {
-                    shipto: shipto,
+                    shipto: s.shipto,
+                    shiptoMd: s.mdCode,
                     headVinOld : ahmsdlog018p02RequestDoData.rows[i].vinOld,
                     headVinNew: ahmsdlog018p02RequestDoData.rows[i].vinNew,
                     vinOld: ahmsdlog018ParseInt(vinOld),
                     vinNew: ahmsdlog018ParseInt(vinNew),
                     mcTypeId: ahmsdlog018p02RequestDoData.rows[i].mcTypeId,
-                    unitGroupId: ahmsdlog018p02RequestDoData.rows[i].unitGroup,
+                    unitGroupId: ahmsdlog018p02RequestDoData.rows[i].unitGroupId,
                     colorId: ahmsdlog018p02RequestDoData.rows[i].colorCode,
                     docNumber: docNumber,
                     mdCode: mdCode,
@@ -1054,6 +1095,63 @@
             $('#ahmsdlog018p02MaintainPrev').removeAttr('disabled');
             $('#ahmsdlog018p02MaintainNext').removeAttr('disabled');
         }
+    }
+
+    function ahmsdlog018p02GenerateExcel() {
+        let data = ahmsdlog018p02RequestDoData
+        const rows = data.rows.map(r => {
+            let data = {
+                ...r,
+                unitGroup: `${r.unitGroupId} - ${r.unitGroup}`
+            }
+
+            return data;
+        });
+
+        data.rows = rows;
+        data.docNumber = 'DPC-202212001';
+        data.period = 'Dec 2022';
+        data.mainDealer = 'G5Z - ABC';
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/downloadexcelshiptoqqlist');
+        xhr.setRequestHeader('content-type', 'application/json');
+        xhr.responseType = 'blob';
+        xhr.send(JSON.stringify(data));
+
+        xhr.onload = function () {
+            let url = xhr.getResponseHeader('Content-Disposition');
+            url = url.split("=")[1];
+
+            const blob = this.response;
+            let downloadLink = window.document.createElement('a');
+            downloadLink.href = window.URL.createObjectURL(blob);
+            downloadLink.download = url;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+    }
+
+    function ahmsdlog018p03UploadExcel() {
+        let formData = new FormData();
+
+        formData.append('file',
+            $('#ahmsdlog018p03UploadFile').prop('files')[0]);
+
+        $.ajax({
+            url: '/upload',
+            type: 'POST',
+            data: formData,
+            contentType: false,
+            processData: false,
+            success: (res) => {
+                ahmsdlog018IsUpload = true;
+                ahmsdlog018p02RequestDoData = res;
+                ahmsdlog018p02ManageTable();
+                $('#ahmsdlog018p03UploadSubmit').removeAttr("disabled");
+            }
+        });
     }
 </script>
 </html>

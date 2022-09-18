@@ -12,6 +12,7 @@ public class Log018VoManageTableUpdateRequest {
     private Integer headVinNew;
     private Integer year;
     private String shipto;
+    private String shiptoMd;
     private String mcTypeId;
     private String colorId;
     private Integer unitGroupId;
@@ -136,5 +137,13 @@ public class Log018VoManageTableUpdateRequest {
 
     public void setVinNew(Integer vinNew) {
         this.vinNew = vinNew;
+    }
+
+    public String getShiptoMd() {
+        return shiptoMd;
+    }
+
+    public void setShiptoMd(String shiptoMd) {
+        this.shiptoMd = shiptoMd;
     }
 }

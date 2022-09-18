@@ -92,7 +92,7 @@ public class Ahmsdlog018ServiceImpl {
             pk.setDocNumber(d.getDocNumber());
             pk.setMdCode(d.getMdCode());
             pk.setShipto(d.getShipto());
-            pk.setShiptoMdCode("G5Z");
+            pk.setShiptoMdCode(d.getShiptoMd());
             AhmsdlogDtlShipQqs dataTemp = (AhmsdlogDtlShipQqs) session.get(AhmsdlogDtlShipQqs.class, pk);
 
             data.setId(pk);
@@ -153,7 +153,7 @@ public class Ahmsdlog018ServiceImpl {
             pk.setDocNumberHeader(d.getDocNumber());
             pk.setMdCodeHeader(d.getMdCode());
             pk.setShipto(d.getShipto());
-            pk.setShiptoMdCode("G5Z");
+            pk.setShiptoMdCode(d.getShiptoMd());
 
             AhmsdlogDtlMngQqDos dataTemp = (AhmsdlogDtlMngQqDos) session.get(AhmsdlogDtlMngQqDos.class, pk);
 
