@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import javax.persistence.Query;
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.util.*;
 
 @Repository
@@ -147,5 +148,138 @@ public class Log018AhmsdlogDtlMntcQqsRepository {
                 "AND A.dsdmntqq_rsdmngqq_rsdshpqq_vmdcode = :mdcode\n" +
                 "ORDER BY A.dsdmntqq_rsdmngqq_dsdmct_rsdmct_vmctypeid,\n" +
                 "         A.dsdmntqq_rsdmngqq_dsdmct_vcolorid";
+    }
+
+    public Map<String, Object> reportByDate(String docNumber, String mdCode) {
+        Session session = sessionFactory.openSession();
+        session.beginTransaction();
+
+        String sqlQuery = getReportByDateQuery();
+
+        Query query = session.createNativeQuery(sqlQuery)
+                .setParameter("docNumber", docNumber)
+                .setParameter("mdcode", mdCode)
+                .setResultTransformer(AliasToEntityMapResultTransformer.INSTANCE);
+
+        List<Map<String, Object>> resList = query.getResultList();
+        Map<String, Object> response = new HashMap<>();
+        Set<Map<String, Object>> qqList = new HashSet<>();
+
+        List<Map<String, Object>> rows = new ArrayList<>();
+        Integer totalReqDoOpen = 0;
+
+        Map<String, Object> dataTemp = new HashMap<>();
+
+        Integer row = 0;
+        for (Map<String, Object> data: resList) {
+            String shipto = (String) data.get("SHIPTO");
+            String vmdCode = (String) data.get("VMDCODE");
+            String city = (String) data.get("VCITY");
+            String shiptoMd = (String) data.get("SHIPTOMD");
+            Date dateMaintain = (Date) data.get("DMNTN");
+            DayOfWeek dayOfWeek = DayOfWeek.of(dateMaintain.getDay() + 1);
+
+            Map<String, Object> qq = new HashMap<>();
+            qq.put("shipto", shipto);
+            qq.put("shiptoMd", shiptoMd);
+            qq.put("mdCode", vmdCode);
+            qq.put("city", city);
+            qq.put("isRegular", data.get("VFLAGREG"));
+
+            qqList.add(qq);
+
+            if(row == 0) {
+                dataTemp.put("dateMaintain", dateMaintain);
+                dataTemp.put("day", dayOfWeek);
+                dataTemp.put(shipto, ((BigDecimal) data.get("TOTAL_DO")).intValue());
+                totalReqDoOpen = ((BigDecimal) data.get("TOTAL_REQ_DO")).intValue();
+
+                row++;
+                continue;
+            } else if(row == resList.size() - 1) {
+                rows.add(dataTemp);
+            }
+
+            Date dateMaintainTemp = (Date) dataTemp.get("dateMaintain");
+
+            if(dateMaintainTemp.equals(dateMaintain)) {
+                dataTemp.put("dateMaintain", dateMaintain);
+                dataTemp.put("day", dayOfWeek);
+                dataTemp.put(shipto, ((BigDecimal) data.get("TOTAL_DO")).intValue());
+            } else {
+                rows.add(dataTemp);
+
+                dataTemp = new HashMap<>();
+
+                dataTemp.put("dateMaintain", dateMaintain);
+                dataTemp.put("day", dayOfWeek);
+                dataTemp.put(shipto, ((BigDecimal) data.get("TOTAL_DO")).intValue());
+            }
+
+            row++;
+        }
+
+        response.put("rows", rows);
+        response.put("requestDo", qqList);
+        response.put("totalReqDo", totalReqDoOpen);
+
+        return response;
+    }
+
+    private List<Map<String, Object>> getQQList(String docNumber, String mdCode) {
+        Session session = sessionFactory.openSession();
+        session.beginTransaction();
+        String sqlQuery = getMaintainListQuery();
+
+        Query query = session.createNativeQuery(sqlQuery)
+                .setParameter("docNumber", docNumber)
+                .setParameter("mdcode", mdCode)
+                .setResultTransformer(AliasToEntityMapResultTransformer.INSTANCE);
+
+        List<Map<String, Object>> list = query.getResultList();
+
+        session.close();
+
+        return list;
+    }
+
+    private String getMaintainListQuery() {
+        return "SELECT DISTINCT dsdmntqq_dsdshpqq_msdqq_vshipto AS shipto\n" +
+                "FROM ahmsdlog_dtlmntcqqs A\n" +
+                "WHERE A.dsdmntqq_rsdmngqq_rsdshpqq_vdocnoshpqq = :docNumber\n" +
+                "  and A.dsdmntqq_dsdshpqq_msdqq_vmdcode = :mdcode";
+    }
+
+    private String getReportByDateQuery() {
+        return "SELECT DISTINCT A.DMNTN,\n" +
+                "(\n" +
+                "    SELECT DISTINCT dsdmntqq_dsdshpqq_msdqq_vshipto AS SHIPTO\n" +
+                "        FROM ahmsdlog_dtlmntcqqs B\n" +
+                "    WHERE B.dmntn = A.dmntn\n" +
+                "    AND B.dsdmntqq_dsdshpqq_msdqq_vshipto = A.dsdmntqq_dsdshpqq_msdqq_vshipto\n" +
+                "    AND B.dsdmntqq_dsdshpqq_msdqq_vmdcode = A.dsdmntqq_dsdshpqq_msdqq_vmdcode\n" +
+                ") AS SHIPTO,\n" +
+                "Q.VFLAGREG,\n" +
+                "Q.VCITY,\n" +
+                "Q.VMDCODE,\n" +
+                "CONCAT(Q.VSHIPTO, Q.VMDCODE) AS SHIPTOMD,\n" +
+                "(\n" +
+                "    SELECT SUM(C.ndoplnold + C.ndoplnnew) FROM ahmsdlog_dtlmntcqqs C\n" +
+                "    WHERE C.dmntn = A.dmntn\n" +
+                "    AND C.dsdmntqq_dsdshpqq_msdqq_vshipto = A.dsdmntqq_dsdshpqq_msdqq_vshipto\n" +
+                "    AND C.dsdmntqq_dsdshpqq_msdqq_vmdcode = A.dsdmntqq_dsdshpqq_msdqq_vmdcode\n" +
+                ") AS TOTAL_DO,\n" +
+                "(\n" +
+                "    SELECT SUM(D.ndovinold+D.ndovinnew)\n" +
+                "    FROM ahmsdlog_dtlmngqqdos D\n" +
+                "    WHERE D.rsdmngqq_rsdshpqq_vdocnoshpqq = A.dsdmntqq_rsdmngqq_rsdshpqq_vdocnoshpqq\n" +
+                "    AND D.rsdmngqq_rsdshpqq_vmdcode = A.dsdmntqq_dsdshpqq_msdqq_vmdcode\n" +
+                ") AS TOTAL_REQ_DO\n" +
+                "FROM ahmsdlog_dtlmntcqqs A,\n" +
+                "     ahmsdlog_mstqqs Q\n" +
+                "WHERE A.dsdmntqq_dsdshpqq_msdqq_vshipto = Q.VSHIPTO\n" +
+                "AND A.dsdmntqq_rsdmngqq_rsdshpqq_vdocnoshpqq = :docNumber\n" +
+                "and a.dsdmntqq_dsdshpqq_msdqq_vmdcode = :mdcode\n" +
+                "ORDER BY A.dmntn";
     }
 }

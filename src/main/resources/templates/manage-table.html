@@ -58,6 +58,9 @@
     <div id="ahmsdlog018p04ReportMcTypeContainer">
 
     </div>
+    <div id="ahmsdlog018p05ReportByDateContainer">
+
+    </div>
 </div>
 <!--    <div class="container">-->
 <!--        <input class="form-control" type="file" id="ahmsdlog018p03UploadFile">-->
@@ -115,6 +118,7 @@
     let ahmsdlog018p02MaintainDateList = null;
     let ahmsdlog018IsUpload = false;
     let ahmsdlog018p04ReportMcTypeData = null;
+    let ahmsdlog018p05ReportByDateData = null;
 
     const shiptoData = [
         {
@@ -132,6 +136,8 @@
     let ahmsdlog018p02RequestApi = [];
 
     $(document).ready(() => {
+        ahmsdlog018p05ReportByDate();
+
         // ahmsdlog018p02ManageTable();
         // ahmsdlog018p02PembukaanDoTable();
         // $('#ahmsdlog018p02MaintainDateUpdate').datetimepicker({
@@ -141,8 +147,149 @@
         // });
         // $('#ahmsdlog018p03UploadSubmit').attr("disabled", true);
         // ahmsdlog018p02MaintainTable();
-        ahmsdlog018p04ReportByMCType();
+        // ahmsdlog018p04ReportByMCType();
     });
+
+    function ahmsdlog018p05ReportByDate() {
+        ahmsdlog018p02Columns = 0;
+
+        $.ajax({
+            url: '/report-by-date',
+            type: 'POST',
+            success: (res) => {
+                ahmsdlog018p05ReportByDateData = res;
+                $('#ahmsdlog018p05ReportByDateContainer').html(ahmsdlog018p05ReportByDateTableHead(res));
+                $('#ahmsdlog018p05ReportDateTable').bootstrapTable({
+                    data: res.rows
+                });
+            }
+        })
+    }
+
+    function ahmsdlog018p05ReportByDateTableHead(data) {
+        return `
+            <table id="ahmsdlog018p05ReportDateTable"
+                data-pagination="true" data-side-pagination="client" data-server-sort="false">
+                <thead>
+                    <th data-valign="middle" data-sortable="true" data-halign="center" data-field="dateMaintain" data-formatter="ahmsdlog018p05DateFormatter">Tanggal</th>
+                    <th data-valign="middle" data-sortable="true" data-halign="center" data-field="day">Hari</th>
+                    ${ahmsdlog018p05ReportByDateTableHeadNotReg(data)}
+                    ${ahmsdlog018p05ReportByDateTableHeadReg(data)}
+                    <th data-valign="middle" data-sortable="true" data-halign="center" data-formatter="ahmsdlog018p05TotalDOFormatter">
+                        Total DO Open
+                    </th>
+                    <th data-valign="middle" data-sortable="true" data-halign="center" data-formatter="ahmsdlog018p05PercentageFormatter">
+                        Cummulative DO Open Percentage
+                    </th>
+                </thead>
+            </table>
+        `;
+    }
+
+    function ahmsdlog018p05ReportByDateTableHeadNotReg(data) {
+        let template = '';
+
+        $.each(data.requestDo, (i, value) => {
+            if(value.isRegular !== 'Y') {
+                template += `
+                    <th data-valign="middle" data-sortable="true" data-halign="center" data-field="${value.shipto}" data-formatter="ahmsdlog018p05DoFormatter">
+                        ${data.requestDo[i].shiptoMd} - ${data.requestDo[i].city}
+                    </th>
+                `;
+            }
+
+            if(i == data.requestDo.length - 1) {
+                template += `
+                    <th data-valign="middle" data-sortable="true" data-halign="center" data-formatter="ahmsdlog018p05TotalQqFormatter">
+                        Total (QQ)
+                    </th>
+                `;
+            }
+        });
+
+        return template;
+    }
+
+    function ahmsdlog018p05ReportByDateTableHeadReg(data) {
+        let template = '';
+
+        $.each(data.requestDo, (i, value) => {
+            if(value.isRegular === 'Y') {
+                template += `
+                    <th data-valign="middle" data-sortable="true" data-halign="center" data-field="${value.shipto}" data-formatter="ahmsdlog018p05DoFormatter">
+                        ${data.requestDo[i].shiptoMd} - ${data.requestDo[i].city}
+                    </th>
+                `;
+            }
+        });
+
+        return template;
+    }
+
+    function ahmsdlog018p05TotalQqFormatter(value, row, index) {
+        const data = ahmsdlog018p05ReportByDateData;
+        let total = 0;
+
+        $.each(data.requestDo, (i, v) => {
+            if(v.isRegular !== 'Y') {
+                const shiptoDo = data.rows[index][v.shipto];
+                total += shiptoDo ? shiptoDo : 0;
+            }
+        });
+
+        ahmsdlog018p05ReportByDateData.rows[index].totalQq = total;
+
+        return total;
+    }
+
+    function ahmsdlog018p05TotalDOFormatter(value, row, index) {
+        const data = ahmsdlog018p05ReportByDateData;
+        let total = 0;
+
+        $.each(data.requestDo, (i, v) => {
+            const shiptoDo = data.rows[index][v.shipto];
+            total += shiptoDo ? shiptoDo : 0;
+        });
+
+        ahmsdlog018p05ReportByDateData.rows[index].totalDoOpen = total;
+
+        return total;
+    }
+
+    function ahmsdlog018p05PercentageFormatter(value, row, index) {
+        const data = ahmsdlog018p05ReportByDateData;
+
+        if(index == 0) {
+            const percent = (data.rows[index].totalDoOpen * 100) /data.totalReqDo;
+            const percentage =Number(percent ? percent : 0);
+
+            ahmsdlog018p05ReportByDateData.rows[index].percentageDo = percentage.toFixed(2);
+
+            return percentage.toFixed(2) + "%";
+        }
+
+        const totalDoBefore = ahmsdlog018p05ReportByDateData.rows[index - 1].percentageDo;
+        const percent = (data.rows[index].totalDoOpen * 100) /data.totalReqDo;
+        const percentage = Number(percent ? percent : 0 + totalDoBefore);
+
+        ahmsdlog018p05ReportByDateData.rows[index].percentageDo = percentage.toFixed(2);
+
+        return percentage.toFixed(2) + "%";
+    }
+
+    function ahmsdlog018p05DoFormatter(value, row, index) {
+        const data = ahmsdlog018p05ReportByDateData;
+        if(!value) {
+            return 0;
+        }
+
+        return value;
+    }
+
+    function ahmsdlog018p05DateFormatter(value, row, index) {
+        return ahmsdlog018GenerateFullDateFormat(value);
+    }
+    //end Report By Date
 
     function ahmsdlog018p04ReportByMCType() {
         $.ajax({

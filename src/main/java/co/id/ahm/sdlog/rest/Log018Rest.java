@@ -150,4 +150,9 @@ public class Log018Rest {
 
         generateExcelService.exportByMcType(res, req);
     }
+
+    @PostMapping("/report-by-date")
+    public @ResponseBody ResponseEntity<?> getByDate() {
+        return ResponseEntity.ok(dtlMntcQqsRepository.reportByDate("DPC-202212001", "G5Z"));
+    }
 }
