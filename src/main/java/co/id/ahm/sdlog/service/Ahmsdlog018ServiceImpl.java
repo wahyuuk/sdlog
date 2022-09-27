@@ -1,22 +1,26 @@
 package co.id.ahm.sdlog.service;
 
+import co.id.ahm.sdlog.dao.Log018AhmsdlogDtlMntcQqsRepository;
 import co.id.ahm.sdlog.dao.Log018AhmsdlogHdrMngqqdosRepository;
 import co.id.ahm.sdlog.dao.Log018AhmsdlogTxnDdsRepository;
 import co.id.ahm.sdlog.dao.Log018AhmsdlogTxnDpColorRepository;
 import co.id.ahm.sdlog.model.*;
-import co.id.ahm.sdlog.vo.Log018VoMaintainUpdateRequest;
-import co.id.ahm.sdlog.vo.Log018VoManageTableUpdateRequest;
-import co.id.ahm.sdlog.vo.Log018VoPembukaanDoRequest;
+import co.id.ahm.sdlog.vo.*;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
+import org.hibernate.transform.AliasToEntityMapResultTransformer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.persistence.Query;
+import java.math.BigDecimal;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.*;
+import java.time.temporal.WeekFields;
 import java.util.*;
 
 @Service
@@ -33,6 +37,9 @@ public class Ahmsdlog018ServiceImpl {
 
     @Autowired
     private Log018AhmsdlogTxnDdsRepository ddsRepository;
+
+    @Autowired
+    private Log018AhmsdlogDtlMntcQqsRepository detailMaintainRepository;
 
     @Transactional
     public ResponseEntity<?> saveOrUpdateManageTable(List<Log018VoManageTableUpdateRequest> req) {
@@ -203,12 +210,13 @@ public class Ahmsdlog018ServiceImpl {
                 AhmsdlogHdrMngPldos dataTemp = session.get(AhmsdlogHdrMngPldos.class, pk);
 
                 if(dataTemp != null) {
+                    if(!row.get(shipto).equals(dataTemp.getStatus())) {
+                        dateMaintains.add(dateMaintain);
+                    }
+
                     dataTemp.setStatus((String) row.get(shipto));
                     session.update(dataTemp);
 
-                    if(!row.get(shipto).equals("T") && dataTemp.getStatus().equals("Y")) {
-                        dateMaintains.add(dateMaintain);
-                    }
                 } else {
                     data.setId(pk);
                     data.setStatus((String) row.get(shipto));
@@ -237,7 +245,27 @@ public class Ahmsdlog018ServiceImpl {
 
         Date minDate = Collections.min(dateMaintains);
 
-        System.out.println(minDate);
+        List<AhmsdlogDtlMntcQqs> list = detailMaintainRepository
+                .getMaintainList(documentNumber, mdCode);
+
+        list.forEach(data -> {
+            if (data.getId().getDateMaintain().compareTo(minDate) == 0 ||
+                    (data.getId().getDateMaintain().getDate() > minDate.getDate() &&
+                            data.getId().getDateMaintain().getMonth() == minDate.getMonth())) {
+
+                Session session = sessionFactory.openSession();
+                Transaction transaction = session.beginTransaction();
+
+                AhmsdlogDtlMntcQqs dataUpdate = data;
+                dataUpdate.setDoVinOld(0);
+                dataUpdate.setDoVinNew(0);
+
+                session.update(dataUpdate);
+
+                transaction.commit();
+                session.close();
+            }
+        });
     }
 
     private void updateMaintainDataOnUpdatePembukaan(String documentNumber, String mdCode,
@@ -272,7 +300,7 @@ public class Ahmsdlog018ServiceImpl {
             pk.setMdCode(mdCode);
             pk.setMcTypeId((String) row.get("mcTypeId"));
             pk.setColorId((String) row.get("colorCode"));
-            pk.setUnitGroupId((Integer) row.get("unitGroup"));
+            pk.setUnitGroupId((Integer) row.get("unitGroupId"));
             pk.setDateMaintain(dateMaintain);
 
             AhmsdlogHdrMntcQqs dataMntTemp = session.get(AhmsdlogHdrMntcQqs.class, pk);
@@ -392,5 +420,214 @@ public class Ahmsdlog018ServiceImpl {
             transaction.commit();
             session.close();
         }
+    }
+
+    public Log018VoHistoryResponse submitMaintain(Log018VoHistoryRequest req) {
+//        Session session = sessionFactory.openSession();
+//        Transaction transaction = session.beginTransaction();
+        return getHistory(12, 2022, req.getDocNumber(), req.getMdCode());
+
+//        AhmsdlogHisshipqqs data = new AhmsdlogHisshipqqs();
+//
+//        data.setDocumentNumber(req.getDocNumber());
+//        data.setMdCode(req.getMdCode());
+//
+//        session.save(data);
+//        transaction.commit();
+//        session.close();
+    }
+
+    public Log018VoHistoryResponse getHistory(Integer month, Integer year, String docNumber, String mdCode) {
+        LocalDate dateStart = LocalDate.of(year, 9, 1);
+
+        LocalDate endDate = dateStart.withDayOfMonth(dateStart.getMonth().length(dateStart.isLeapYear()));
+        YearMonth currentYearMonth = YearMonth.of(year, month);
+        int weeksTotal = currentYearMonth
+                        .atEndOfMonth()
+                        .get(WeekFields.ISO.weekOfMonth());
+
+        LocalDate startDate = null;
+        boolean weekTemp = true;
+        Log018VoHistoryResponse response = new Log018VoHistoryResponse();
+        List<Map<String, Object>> rows = new ArrayList<>();
+        Set<String> weeks = new HashSet<>();
+        Set<String> aliass = new HashSet<>();
+        Set<String> descs = new HashSet<>();
+
+        Integer week = 1;
+        for (int i = 1; i <= endDate.getDayOfMonth(); i++) {
+            LocalDate dateTemp = LocalDate.of(year, month, i);
+
+            if(weekTemp == true) {
+                startDate = dateTemp;
+                weekTemp = false;
+            }
+
+            if(dateTemp.getDayOfWeek().compareTo(DayOfWeek.SATURDAY) == 0) {
+                List<Map<String, Object>> res = getDtlMaintain(Date
+                        .from(startDate.atStartOfDay(ZoneId.systemDefault()).toInstant()),
+                        Date.from(dateTemp.atStartOfDay(ZoneId.systemDefault()).toInstant()), docNumber, mdCode);
+
+                Map<String, Object> data = new HashMap<>();
+                for(Map<String, Object> d : res) {
+                    data.put("Week".concat(String.valueOf(week)), res);
+                    Integer nid = (Integer) d.get("NID");
+                    Integer plan = ((BigDecimal) d.get("PLAN")).intValue();
+                    Integer mdpercent = ((BigDecimal) d.get("MDPERCENT")).intValue();
+                    String desc = (String) d.get("VUGDESC");
+                    String alias = (String) d.get("VALIAS");
+
+                    Integer resDds = getDds(Date
+                                    .from(startDate.atStartOfDay(ZoneId.systemDefault()).toInstant()),
+                            Date.from(dateTemp.atStartOfDay(ZoneId.systemDefault()).toInstant()), docNumber, mdCode, nid);
+                    data.put(alias, mdpercent);
+                    data.put("desc", desc);
+                    data.put("national", (resDds * 100) / plan);
+                    rows.add(data);
+                    weeks.add("Week".concat(String.valueOf(week)));
+                    aliass.add(alias);
+                    descs.add(desc);
+                    data = new HashMap<>();
+                }
+
+                rows.add(data);
+
+                weekTemp = true;
+                weeksTotal--;
+                week++;
+            } else if(weeksTotal == 1) {
+                List<Map<String, Object>> res = getDtlMaintain(Date
+                                .from(startDate.atStartOfDay(ZoneId.systemDefault()).toInstant()),
+                        Date.from(dateTemp.atStartOfDay(ZoneId.systemDefault()).toInstant()), docNumber, mdCode);
+
+                Map<String, Object> data = new HashMap<>();
+                for(Map<String, Object> d : res) {
+                    data.put("Week".concat(String.valueOf(week)), res);
+                    Integer nid = (Integer) d.get("NID");
+                    Integer plan = ((BigDecimal) d.get("PLAN")).intValue();
+                    Integer mdpercent = ((BigDecimal) d.get("MDPERCENT")).intValue();
+                    String desc = (String) d.get("VUGDESC");
+                    String alias = (String) d.get("VALIAS");
+
+                    Integer resDds = getDds(Date
+                                    .from(startDate.atStartOfDay(ZoneId.systemDefault()).toInstant()),
+                            Date.from(dateTemp.atStartOfDay(ZoneId.systemDefault()).toInstant()), docNumber, mdCode, nid);
+                    data.put(alias, mdpercent);
+                    data.put("desc", desc);
+                    data.put("national", (resDds * 100) / plan);
+                    rows.add(data);
+                    data = new HashMap<>();
+                }
+            }
+        }
+
+        response.setRows(rows);
+        response.setAlias(aliass);
+        response.setDesc(descs);
+        response.setWeeks(weeks);
+
+        return response;
+    }
+
+    private List<Map<String, Object>> getDtlMaintain(Date startDate, Date endDate, String docNumber, String mdCode) {
+        Session session = sessionFactory.openSession();
+        session.beginTransaction();
+
+        Query query = session.createNativeQuery(getDtlMaintainQuery())
+                .setParameter("startDate", startDate)
+                .setParameter("endDate", endDate)
+                .setParameter("docNumber", docNumber)
+                .setParameter("mdcode", mdCode)
+                .setResultTransformer(AliasToEntityMapResultTransformer.INSTANCE);
+
+        List<Map<String, Object>> resList = query.getResultList();
+
+        return resList;
+    }
+
+    private String getDtlMaintainQuery() {
+        return "SELECT DISTINCT\n" +
+                "A.dsdmntqq_rsdmngqq_msduntgp_nid AS NID,\n" +
+                "A.dmntn,\n" +
+                "U.VUGDESC, M.VALIAS,(\n" +
+                "    SELECT SUM(C.ndovinnew+C.ndovinold) FROM ahmsdlog_dtlmngqqdos C\n" +
+                "    WHERE C.rsdmngqq_rsdshpqq_vdocnoshpqq = A.dsdmntqq_rsdmngqq_rsdshpqq_vdocnoshpqq\n" +
+                "    AND C.rsdmngqq_rsdshpqq_vmdcode = A.dsdmntqq_rsdmngqq_rsdshpqq_vmdcode\n" +
+                "    AND C.rsdmngqq_dsdmct_rsdmct_vmctypeid = A.dsdmntqq_rsdmngqq_dsdmct_rsdmct_vmctypeid\n" +
+                "    AND C.rsdmngqq_dsdmct_vcolorid = A.dsdmntqq_rsdmngqq_dsdmct_vcolorid\n" +
+                ") AS PLAN,\n" +
+                "(FLOOR(\n" +
+                "            (\n" +
+                "                SELECT SUM(B.ndoplnold+B.ndoplnnew) FROM ahmsdlog_dtlmntcqqs B\n" +
+                "                WHERE B.dsdmntqq_rsdmngqq_rsdshpqq_vdocnoshpqq = A.dsdmntqq_rsdmngqq_rsdshpqq_vdocnoshpqq\n" +
+                "                  AND B.dsdmntqq_rsdmngqq_rsdshpqq_vmdcode = A.dsdmntqq_rsdmngqq_rsdshpqq_vmdcode\n" +
+                "                  AND B.dsdmntqq_rsdmngqq_msduntgp_nid = A.dsdmntqq_rsdmngqq_msduntgp_nid\n" +
+                "            ) * 100 /\n" +
+                "            (\n" +
+                "                SELECT SUM(B.ndovinold+B.ndovinnew) FROM ahmsdlog_dtlmngqqdos B\n" +
+                "                WHERE B.rsdmngqq_rsdshpqq_vdocnoshpqq = A.dsdmntqq_rsdmngqq_rsdshpqq_vdocnoshpqq\n" +
+                "                  AND B.rsdmngqq_rsdshpqq_vmdcode = A.dsdmntqq_rsdmngqq_rsdshpqq_vmdcode\n" +
+                "                  AND B.rsdmngqq_msduntgp_nid = A.dsdmntqq_rsdmngqq_msduntgp_nid\n" +
+                "            )\n" +
+                "))AS MDPERCENT\n" +
+                "FROM ahmsdlog_dtlmntcqqs A,\n" +
+                "     ahmsdlog_mstunitgrps U,\n" +
+                "     ahmsdlog_mstmdactvs M\n" +
+                "WHERE U.NID = A.dsdmntqq_rsdmngqq_msduntgp_nid\n" +
+                "AND A.dsdmntqq_rsdmngqq_rsdshpqq_vmdcode = :mdcode\n" +
+                "AND A.dsdmntqq_rsdmngqq_rsdshpqq_vdocnoshpqq = :docNumber\n" +
+                "AND M.VMDCODE = A.dsdmntqq_rsdmngqq_rsdshpqq_vmdcode\n" +
+                "AND A.dmntn BETWEEN :startDate AND :endDate\n" +
+                "GROUP BY A.dmntn, A.dsdmntqq_rsdmngqq_msduntgp_nid";
+    }
+
+    private String buildToMpsAndDdsQuery(Date startDate, Date endDate) {
+        StringBuilder query = new StringBuilder("SELECT ");
+
+        for (int i = startDate.getDate(); i <= endDate.getDate() ; i++) {
+            query.append("NDAY".concat(String.valueOf(i)));
+
+            if(i != endDate.getDate()) {
+                query.append(",");
+            }
+        }
+
+        return query.toString();
+    }
+
+    private Integer getDds(Date startDate, Date endDate, String docNumber, String mdCode, Integer nid) {
+        Session session = sessionFactory.openSession();
+        session.beginTransaction();
+
+        StringBuilder stringBuilder = new StringBuilder(buildToMpsAndDdsQuery(startDate, endDate));
+        stringBuilder.append(" FROM ahmsdlog_txnddss A,\n" +
+                            "ahmsdlog_txndpcolors B,\n" +
+                            "ahmsdlog_msttypemaps T\n" +
+                            "WHERE A.VDOCDPWARNA = B.vdocno\n" +
+                            "AND A.VMDCODE = B.vmdcode\n" +
+                            "AND A.VMCTYPEID = B.vmctypeid\n" +
+                            "AND B.vmctypeid = T.DSDMCT_RSDMCT_VMCTYPEID\n" +
+                            "AND B.vdocno = :docNumber AND B.vmdcode = :mdcode AND A.NMONTH = :month\n" +
+                            "AND A.NYEAR = :year AND T.DSDMCT_RSDMCT_VMCTYPEID = :nid");
+
+        Query query = session.createNativeQuery(stringBuilder.toString())
+                .setParameter("docNumber", docNumber)
+                .setParameter("mdcode", mdCode)
+                .setParameter("month", startDate.getMonth())
+                .setParameter("year", startDate.getYear())
+                .setParameter("nid", nid)
+                .setResultTransformer(AliasToEntityMapResultTransformer.INSTANCE);
+
+        List<Map<String, Object>> resList = query.getResultList();
+
+        Integer total = 0;
+        for (Map<String, Object> data: resList){
+            for (int i = startDate.getDate(); i <= endDate.getDate() ; i++) {
+                Integer sum = ((BigDecimal) data.get("A.NDAY".concat(String.valueOf(i)))).intValue();
+                total += sum;
+            }
+        }
+
+        return total;
     }
 }

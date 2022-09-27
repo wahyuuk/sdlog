@@ -69,7 +69,7 @@ public class Log018Rest {
     @PostMapping("/maintain")
     public @ResponseBody
     ResponseEntity<?> getMaintainTable(@RequestBody Log018VoMaintainTableRequest req) {
-        return ResponseEntity.ok(headerMaintainRepository.getManageTable(req));
+        return ResponseEntity.ok(headerMaintainRepository.getMaintainTable(req));
     }
 
     @PostMapping("/pembukaan-save")
@@ -154,5 +154,12 @@ public class Log018Rest {
     @PostMapping("/report-by-date")
     public @ResponseBody ResponseEntity<?> getByDate() {
         return ResponseEntity.ok(dtlMntcQqsRepository.reportByDate("DPC-202212001", "G5Z"));
+    }
+
+    @PostMapping("/submit-maintain")
+    public @ResponseBody ResponseEntity<?> submitMaintain(@RequestBody Log018VoHistoryRequest req) {
+
+
+        return ResponseEntity.ok(ahmsdlog018Service.submitMaintain(req));
     }
 }

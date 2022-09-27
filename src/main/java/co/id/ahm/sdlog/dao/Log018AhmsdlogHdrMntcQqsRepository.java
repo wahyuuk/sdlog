@@ -8,7 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import javax.persistence.Query;
-import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -18,8 +17,8 @@ public class Log018AhmsdlogHdrMntcQqsRepository {
     @Autowired
     private SessionFactory sessionFactory;
 
-    public Map<String, Object> getManageTable(Log018VoMaintainTableRequest req) {
-        String sqlQuery = getManageTableQuery();
+    public Map<String, Object> getMaintainTable(Log018VoMaintainTableRequest req) {
+        String sqlQuery = getMaintainTableQuery();
 
         Session session = sessionFactory.openSession();
         session.beginTransaction();
@@ -105,7 +104,7 @@ public class Log018AhmsdlogHdrMntcQqsRepository {
         List<Date> dates = datesMap
                 .stream()
                 .map(d -> {
-                    Date date = (Date) d.get("dmntn");
+                    Date date = (Date) d.get("DMNTN");
 
                     return date;
                 }).collect(Collectors.toList());
@@ -143,7 +142,7 @@ public class Log018AhmsdlogHdrMntcQqsRepository {
         return value == null ? 0 : (Integer) value;
     }
 
-    private String getManageTableQuery() {
+    private String getMaintainTableQuery() {
         return "SELECT G.VUGDESC, (" +
                 "        SELECT VCOLORDESC FROM AHMSDLOG_DTLMCTYPES WHERE VCOLORID = " +
                 "       B.dsdmntqq_rsdmngqq_dsdmct_vcolorid LIMIT 1\n" +
@@ -167,10 +166,10 @@ public class Log018AhmsdlogHdrMntcQqsRepository {
     }
 
     private String getDateMaintainQuery() {
-        return "select distinct dmntn\n" +
-                "from AHMSDLOG_DTLMNTCQQS where\n" +
-                "DSDMNTQQ_DSDSHPQQ_RSDSHPQQ_VDOCNOSHPQQ= :docNumber\n" +
-                "and DSDMNTQQ_DSDSHPQQ_RSDSHPQQ_VMDCODE= :mdcode\n" +
-                "order by dmntn";
+        return "SELECT DISTINCT P.DMNTN FROM ahmsdlog_hdrmngpldos P\n" +
+                "WHERE \n"+
+                "  P.rsdshpqq_vdocnoshpqq = :docNumber\n" +
+                "  AND P.rsdshpqq_vmdcode = :mdcode" +
+                "  AND P.vstatshpqq = 'Y' ORDER BY P.DMNTN";
     }
 }

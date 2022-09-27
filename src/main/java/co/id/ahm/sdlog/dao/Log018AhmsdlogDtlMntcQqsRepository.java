@@ -1,5 +1,6 @@
 package co.id.ahm.sdlog.dao;
 
+import co.id.ahm.sdlog.model.AhmsdlogDtlMntcQqs;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.transform.AliasToEntityMapResultTransformer;
@@ -281,5 +282,20 @@ public class Log018AhmsdlogDtlMntcQqsRepository {
                 "AND A.dsdmntqq_rsdmngqq_rsdshpqq_vdocnoshpqq = :docNumber\n" +
                 "and a.dsdmntqq_dsdshpqq_msdqq_vmdcode = :mdcode\n" +
                 "ORDER BY A.dmntn";
+    }
+
+    public List<AhmsdlogDtlMntcQqs> getMaintainList(String docNumber, String mdCode) {
+        Session session = sessionFactory.openSession();
+        session.beginTransaction();
+
+        Query query = session.createQuery(
+                "SELECT D FROM AhmsdlogDtlMntcQqs D WHERE D.id.docNumberHeader = :docNumber " +
+                        "AND D.id.mdCodeHeader = :mdcode"
+                    ).setParameter("docNumber", docNumber)
+                    .setParameter("mdcode", mdCode);
+
+        List<AhmsdlogDtlMntcQqs> res = query.getResultList();
+
+        return res;
     }
 }

@@ -53,15 +53,15 @@
 </head>
 <body>
 
-<div class="container">
-    <button class="btn btn-primary" onclick="ahmsdlog018p04ExportToExcel()">Generate Excel</button>
-    <div id="ahmsdlog018p04ReportMcTypeContainer">
+<!--<div class="container">-->
+<!--    <button class="btn btn-primary" onclick="ahmsdlog018p04ExportToExcel()">Generate Excel</button>-->
+<!--    <div id="ahmsdlog018p04ReportMcTypeContainer">-->
 
-    </div>
-    <div id="ahmsdlog018p05ReportByDateContainer">
+<!--    </div>-->
+<!--    <div id="ahmsdlog018p05ReportByDateContainer">-->
 
-    </div>
-</div>
+<!--    </div>-->
+<!--</div>-->
 <!--    <div class="container">-->
 <!--        <input class="form-control" type="file" id="ahmsdlog018p03UploadFile">-->
 <!--        <button class="btn btn-primary" onclick="ahmsdlog018p02GenerateExcel()">Generate Excel</button>-->
@@ -78,29 +78,28 @@
 <!--        <button class="btn btn-primary" onclick="ahmsdlog018p02ManageOnUpdate()">Update</button>-->
 <!--    </div>-->
 
-<!--    <div id="ahmsdlog018p02PembukaanDoTableContainer">-->
+    <div class="container">
+        <div class="input-group date" id="ahmsdlog018p02MaintainDateUpdate">
+            <input id="ahmsdlog018p02MaintainDateUpdateInput" type="text"
+                   class="form-control" value="04-2021"/>
+            <span class="input-group-addon">
+            <span class="glyphicon glyphicon-calendar"></span>
+        </span>
+        </div>
+        <div id="ahmsdlog018p02MaintainTableContainer"></div>
+        <div id="ahmsdlog018p02MaintainButtonContainer">
+            <button class="btn btn-primary" id="ahmsdlog018p02MaintainPrev" onclick="ahmsdlog018p02MaintainPrev()">Prev</button>
+            <button class="btn btn-primary" id="ahmsdlog018p02MaintainNext" onclick="ahmsdlog018p02MaintainNext()">Next</button>
+        </div>
+    </div>
 
-<!--    </div>-->
+    <div id="ahmsdlog018p02PembukaanDoTableContainer">
 
-<!--    <div class="container">-->
-<!--        <button class="btn btn-primary" onclick="ahmsdlog018p02PembukaanDoOnUpdate()">Update</button>-->
-<!--    </div>-->
+    </div>
 
-<!--    <div class="container">-->
-<!--        <div class="input-group date" id="ahmsdlog018p02MaintainDateUpdate">-->
-<!--            <input id="ahmsdlog018p02MaintainDateUpdateInput" type="text"-->
-<!--                   class="form-control" value="04-2021"/>-->
-<!--            <span class="input-group-addon">-->
-<!--            <span class="glyphicon glyphicon-calendar"></span>-->
-<!--        </span>-->
-<!--        </div>-->
-<!--        <div id="ahmsdlog018p02MaintainTableContainer"></div>-->
-<!--        <div>-->
-<!--            <button class="btn btn-primary" id="ahmsdlog018p02MaintainPrev" onclick="ahmsdlog018p02MaintainPrev()">Prev</button>-->
-<!--            <button class="btn btn-primary" id="ahmsdlog018p02MaintainNext" onclick="ahmsdlog018p02MaintainNext()">Next</button>-->
-<!--            <button class="btn btn-primary" id="ahmsdlog018p02MaintainUpdate" onclick="ahmsdlog018p02MaintainOnUpdate()">Update</button>-->
-<!--        </div>-->
-<!--    </div>-->
+    <div class="container">
+        <button class="btn btn-primary" onclick="ahmsdlog018p02PembukaanDoOnUpdate()">Update</button>
+    </div>
 
 </body>
 <script th:src="@{/js/jQuery-2.1.3.min.js}"></script>
@@ -136,17 +135,17 @@
     let ahmsdlog018p02RequestApi = [];
 
     $(document).ready(() => {
-        ahmsdlog018p05ReportByDate();
-
+        // ahmsdlog018p05ReportByDate();
+        //
         // ahmsdlog018p02ManageTable();
-        // ahmsdlog018p02PembukaanDoTable();
-        // $('#ahmsdlog018p02MaintainDateUpdate').datetimepicker({
-        //     format: 'DD MMM YYYY',
-        //     viewMode: 'days',
-        //     locale: 'en'
-        // });
-        // $('#ahmsdlog018p03UploadSubmit').attr("disabled", true);
-        // ahmsdlog018p02MaintainTable();
+        ahmsdlog018p02PembukaanDoTable();
+        $('#ahmsdlog018p02MaintainDateUpdate').datetimepicker({
+            format: 'DD MMM YYYY',
+            viewMode: 'days',
+            locale: 'en'
+        });
+        $('#ahmsdlog018p03UploadSubmit').attr("disabled", true);
+        ahmsdlog018p02MaintainTable();
         // ahmsdlog018p04ReportByMCType();
     });
 
@@ -260,7 +259,7 @@
         const data = ahmsdlog018p05ReportByDateData;
 
         if(index == 0) {
-            const percent = (data.rows[index].totalDoOpen * 100) /data.totalReqDo;
+            const percent = (data.rows[index].totalDoOpen * 100) / data.totalReqDo;
             const percentage =Number(percent ? percent : 0);
 
             ahmsdlog018p05ReportByDateData.rows[index].percentageDo = percentage.toFixed(2);
@@ -269,8 +268,8 @@
         }
 
         const totalDoBefore = ahmsdlog018p05ReportByDateData.rows[index - 1].percentageDo;
-        const percent = (data.rows[index].totalDoOpen * 100) /data.totalReqDo;
-        const percentage = Number(percent ? percent : 0 + totalDoBefore);
+        const percent = (data.rows[index].totalDoOpen * 100) / data.totalReqDo;
+        const percentage = percent ? percent : 0 + ahmsdlog018ParseInt(totalDoBefore);
 
         ahmsdlog018p05ReportByDateData.rows[index].percentageDo = percentage.toFixed(2);
 
@@ -1418,7 +1417,6 @@
 
         $('#ahmsdlog018p02MaintainDateUpdateInput').val(prevDate);
         ahmsdlog018p02MaintainOnUpdate();
-        ahmsdlog018p02MaintainTableInit();
     }
 
     function ahmsdlog018p02MaintainNext() {
@@ -1430,7 +1428,6 @@
 
         $('#ahmsdlog018p02MaintainDateUpdateInput').val(nextDate);
         ahmsdlog018p02MaintainOnUpdate();
-        ahmsdlog018p02MaintainTableInit();
     }
 
     function ahmsdlog018p02MaintainButtonConfig() {
@@ -1440,14 +1437,48 @@
         const index = data.indexOf(ahmsdlog018GenerateDateRequest(dateInputValue));
 
         if(index == 0) {
+            $('#ahmsdlog018p02MaintainButtonContainer').html(
+                `<button class="btn btn-primary" id="ahmsdlog018p02MaintainPrev" onclick="ahmsdlog018p02MaintainPrev()">Prev</button>
+                 <button class="btn btn-primary" id="ahmsdlog018p02MaintainNext" onclick="ahmsdlog018p02MaintainNext()">Next</button>`);
             $('#ahmsdlog018p02MaintainPrev').attr('disabled', true);
         } else if(index == data.length - 1) {
+            $('#ahmsdlog018p02MaintainButtonContainer').html(
+                `<button class="btn btn-primary" id="ahmsdlog018p02MaintainPrev" onclick="ahmsdlog018p02MaintainPrev()">Prev</button>
+                 <button class="btn btn-primary" id="ahmsdlog018p02MaintainNext" onclick="ahmsdlog018p02MaintainNext()">Next</button>`+
+                '<button class="btn btn-primary" ' +
+                'id="ahmsdlog018p02MaintainUpdate" ' +
+                'onclick="ahmsdlog018p02MaintainSubmit()">' +
+                'Submit</button>');
+
             $('#ahmsdlog018p02MaintainPrev').removeAttr('disabled');
             $('#ahmsdlog018p02MaintainNext').attr('disabled', true);
+
         } else {
+            $('#ahmsdlog018p02MaintainButtonContainer').html(
+                `<button class="btn btn-primary" id="ahmsdlog018p02MaintainPrev" onclick="ahmsdlog018p02MaintainPrev()">Prev</button>
+                 <button class="btn btn-primary" id="ahmsdlog018p02MaintainNext" onclick="ahmsdlog018p02MaintainNext()">Next</button>`);
             $('#ahmsdlog018p02MaintainPrev').removeAttr('disabled');
             $('#ahmsdlog018p02MaintainNext').removeAttr('disabled');
         }
+    }
+
+    function ahmsdlog018p02MaintainSubmit() {
+        ahmsdlog018p02MaintainOnUpdate();
+
+        const data = {
+            docNumber: 'DPC-202212001',
+            mdCode: 'G5Z'
+        }
+
+        $.ajax({
+            url: '/submit-maintain',
+            type: 'POST',
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: (res) => {
+                console.log(res)
+            }
+        })
     }
 
     function ahmsdlog018p02GenerateExcel() {
