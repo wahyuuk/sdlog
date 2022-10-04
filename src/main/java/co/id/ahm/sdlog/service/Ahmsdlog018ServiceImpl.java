@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.*;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.WeekFields;
 import java.util.*;
 
@@ -386,14 +387,22 @@ public class Ahmsdlog018ServiceImpl {
 
     public void updateMaintainTable(List<Log018VoMaintainUpdateRequest> req) throws ParseException {
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
         for (Log018VoMaintainUpdateRequest row: req) {
             Session session = sessionFactory.openSession();
             Transaction transaction = session.beginTransaction();
 
+            LocalDate endDateLocal = LocalDate.parse(row.getDateMaintain(), dateTimeFormatter);
+            endDateLocal = endDateLocal.withDayOfMonth(endDateLocal.getMonth().length(endDateLocal.isLeapYear()));
+
             AhmsdlogDtlMntcQqs data = new AhmsdlogDtlMntcQqs();
             AhmsdlogDtlMntcQqsPk pk = new AhmsdlogDtlMntcQqsPk();
             Date dateMaintain = format.parse(row.getDateMaintain());
+            Date endDate = Date.from(endDateLocal.atStartOfDay(ZoneId.systemDefault()).toInstant());
+
+            List<AhmsdlogDtlMntcQqs> listOfDetails = detailMaintainRepository.getMaintainForUpdate(row.getDocNumber(),
+                    row.getMdCode(), dateMaintain, endDate, row.getMcTypeId(), row.getColorId());
 
             pk.setDocNumber(row.getDocNumber());
             pk.setMdCode(row.getMdCode());
@@ -415,10 +424,26 @@ public class Ahmsdlog018ServiceImpl {
             data.setQtyRemainHminVinNew(row.gethVinNew());
             data.setQtyRemainHVinOld(row.gethVinOld());
             data.setQtyRemainHVinNew(row.gethVinNew());
-
             session.update(data);
             transaction.commit();
             session.close();
+
+            for (AhmsdlogDtlMntcQqs d : listOfDetails) {
+                if(d.getDoVinOld() == 0 && d.getDoVinNew() == 0) {
+                    Session sessionUpdate = sessionFactory.openSession();
+                    Transaction transactionUpdate = sessionUpdate.beginTransaction();
+
+                    d.setQtyRemainHminVinOld(row.gethVinOld());
+                    d.setQtyRemainHminVinNew(row.gethVinNew());
+                    d.setQtyRemainHVinOld(row.gethVinOld());
+                    d.setQtyRemainHVinNew(row.gethVinNew());
+
+                    sessionUpdate.update(d);
+                    transactionUpdate.commit();
+
+                }
+            }
+
         }
     }
 

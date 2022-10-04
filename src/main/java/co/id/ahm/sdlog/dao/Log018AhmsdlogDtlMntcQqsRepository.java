@@ -298,4 +298,24 @@ public class Log018AhmsdlogDtlMntcQqsRepository {
 
         return res;
     }
+
+    public List<AhmsdlogDtlMntcQqs> getMaintainForUpdate(String documentNumber, String mdCode, Date startdate,
+                                                         Date endDate, String mcTypeId, String colorId) {
+
+        Session session = sessionFactory.openSession();
+        session.beginTransaction();
+
+        Query query = session.createQuery(
+                "SELECT D FROM AhmsdlogDtlMntcQqs D WHERE D.id.dateMaintain BETWEEN :startDate AND :endDate AND D.id.docNumber = :docNumber AND D.id.mdCode = :mdCode AND D.id.mcTypeId = :mcTypeId AND D.id.colorId = :color"
+        ).setParameter("docNumber", documentNumber)
+                .setParameter("startDate", startdate)
+                .setParameter("endDate", endDate)
+                .setParameter("mdCode", mdCode)
+                .setParameter("mcTypeId", mcTypeId)
+                .setParameter("color", colorId);
+
+        List<AhmsdlogDtlMntcQqs> res = query.getResultList();
+
+        return res;
+    }
 }
