@@ -462,6 +462,170 @@ public class Ahmsdlog018ServiceImpl {
 //        session.close();
     }
 
+    public Map<String, Object> historyRes(String docNum, String mdCode, Integer month, Integer year) {
+        LocalDate dateStart = LocalDate.of(year, month, 1);
+
+        LocalDate endDate = dateStart.withDayOfMonth(dateStart.getMonth().length(dateStart.isLeapYear()));
+        YearMonth currentYearMonth = YearMonth.of(year, month);
+        int weeksTotal = currentYearMonth
+                .atEndOfMonth()
+                .get(WeekFields.ISO.weekOfMonth());
+
+        LocalDate startDate = null;
+        boolean weekTemp = true;
+        List<Map<String, Object>> response = new ArrayList<>();
+
+        Double totalMd = detailMaintainRepository.getSumPerMD(docNum, mdCode);
+        List<Map<String, Object>> dtl = detailMaintainRepository.getAllMcTypeByDocNumber(docNum, mdCode);
+        Map<String, Object> res = new HashMap<>();
+        res.put("totalWeek", weeksTotal);
+
+        Integer week = 1;
+        for (int i = 1; i <= endDate.getDayOfMonth(); i++) {
+            Map<String, Object> resTemp = new HashMap<>();
+            LocalDate dateTemp = LocalDate.of(year, month, i);
+
+            if(weekTemp == true) {
+                startDate = dateTemp;
+                weekTemp = false;
+            }
+
+            if(dateTemp.getDayOfWeek().compareTo(DayOfWeek.SATURDAY) == 0) {
+                for (Map<String, Object> d : dtl) {
+                    String mcType = (String) d.get("mcType");
+                    String color = (String) d.get("colorId");
+                    String desc = (String) d.get("desc");
+
+                    Double totalD = detailMaintainRepository
+                            .getSumDo(docNum, mdCode, Date.from(startDate.atStartOfDay(ZoneId.systemDefault()).toInstant()),
+                                    Date.from(dateTemp.atStartOfDay(ZoneId.systemDefault()).toInstant()), mcType, color);
+                    Double percent = (totalD/totalMd) * 100;
+
+                    Double nas = getNational(mcType, color, docNum, dateStart, startDate.getDayOfMonth(), endDate.getDayOfMonth());
+                    Double totalNas = getAllNasSum(mcType, color, docNum, dateStart);
+
+                    Double percentNas = (nas/totalNas) * 100;
+
+                    if(nas == 0) {
+                        percentNas = 0D;
+                    }
+
+                    if(totalD == 0) {
+                        percent = 0D;
+                    }
+
+                    resTemp.put("week", week);
+                    resTemp.put("perMd", Math.ceil(percent));
+                    resTemp.put("nas", Math.ceil(percentNas));
+                    resTemp.put("mcType", mcType);
+                    resTemp.put("colorId", color);
+                    resTemp.put("desc", desc);
+
+                    response.add(resTemp);
+                    resTemp = new HashMap<>();
+                }
+
+                weekTemp = true;
+                weeksTotal--;
+                week++;
+            } else if(weeksTotal == 1 && i == endDate.getDayOfMonth()) {
+                for (Map<String, Object> d : dtl) {
+                    String mcType = (String) d.get("mcType");
+                    String color = (String) d.get("colorId");
+                    String desc = (String) d.get("desc");
+
+                    Double totalD = detailMaintainRepository
+                            .getSumDo(docNum, mdCode, Date.from(startDate.atStartOfDay(ZoneId.systemDefault()).toInstant()),
+                                    Date.from(dateTemp.atStartOfDay(ZoneId.systemDefault()).toInstant()), mcType, color);
+                    Double percent = (totalD/totalMd) * 100;
+
+                    Double nas = getNational(mcType, color, docNum, dateStart, startDate.getDayOfMonth(), endDate.getDayOfMonth());
+                    Double totalNas = getAllNasSum(mcType, color, docNum, dateStart);
+
+                    Double percentNas = (nas/totalNas) * 100;
+
+                    if(nas == 0) {
+                        percentNas = 0D;
+                    }
+
+                    if(totalD == 0) {
+                        percent = 0D;
+                    }
+
+                    resTemp.put("week", week);
+                    resTemp.put("perMd", Math.ceil(percent));
+                    resTemp.put("nas", Math.ceil(percentNas));
+                    resTemp.put("mcType", mcType);
+                    resTemp.put("colorId", color);
+                    resTemp.put("desc", desc);
+                    resTemp = new HashMap<>();
+                }
+            }
+        }
+
+        res.put("rows", response);
+        return res;
+    }
+
+    private Double getNational(String mcType, String colorId, String docNum,
+                                LocalDate date, Integer startDate, Integer endDate) {
+        if(LocalDate.now().isAfter(date)) {
+            return getDDS(mcType, colorId, docNum, startDate, endDate);
+        }
+
+        return getMps(mcType, colorId, date, startDate, endDate);
+    }
+
+    private Double getAllNasSum(String mcType, String colorId, String docNum, LocalDate date) {
+        List<Map<String, Object>> nas = null;
+
+        if(LocalDate.now().isAfter(date)) {
+            nas = detailMaintainRepository.getDDs(mcType, colorId, docNum);
+        } else {
+            nas = detailMaintainRepository
+                    .getMps(mcType, colorId, date.getMonth().getValue() + 1, date.getYear());
+        }
+
+        Double total = 0D;
+
+        for(Map<String, Object> d : nas) {
+            for (int i = 1; i <= 31; i++) {
+                total += ((BigDecimal) d.get("NDAY".concat(String.valueOf(i)))).intValue();
+            }
+        }
+
+        return total;
+    }
+
+    public Double getDDS(String mcType, String colorId, String docNum, Integer startDate, Integer endDate) {
+        List<Map<String, Object>> dds = detailMaintainRepository.getDDs(mcType, colorId, docNum);
+
+        Double total = 0D;
+
+        for(Map<String, Object> d : dds) {
+            for (int i = startDate; i <= endDate; i++) {
+                total += ((BigDecimal) d.get("NDAY".concat(String.valueOf(i)))).intValue();
+            }
+        }
+
+        return total;
+    }
+
+    public Double getMps(String mcType, String colorId, LocalDate date, Integer startDate, Integer endDate) {
+        List<Map<String, Object>> mps = detailMaintainRepository
+                .getMps(mcType, colorId, date.getMonth().getValue(), date.getYear());
+
+        Double total = 0D;
+
+        for(Map<String, Object> d : mps) {
+            for (int i = startDate; i <= endDate; i++) {
+                total += ((BigDecimal) d.get("NDAY".concat(String.valueOf(i)))).intValue();
+            }
+        }
+
+        return total;
+    }
+
     public Log018VoHistoryResponse getHistory(Integer month, Integer year, String docNumber, String mdCode) {
         LocalDate dateStart = LocalDate.of(year, 9, 1);
 

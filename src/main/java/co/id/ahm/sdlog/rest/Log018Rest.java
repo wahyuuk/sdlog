@@ -162,4 +162,9 @@ public class Log018Rest {
 
         return ResponseEntity.ok(ahmsdlog018Service.submitMaintain(req));
     }
+
+    @PostMapping("/history")
+    public @ResponseBody ResponseEntity<?> getHistory() {
+        return ResponseEntity.ok(ahmsdlog018Service.historyRes("DPC-202212001", "G5Z", 12, 2022));
+    }
 }

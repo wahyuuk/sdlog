@@ -11,6 +11,7 @@ import javax.persistence.Query;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Repository
 public class Log018AhmsdlogDtlMntcQqsRepository {
@@ -315,6 +316,114 @@ public class Log018AhmsdlogDtlMntcQqsRepository {
                 .setParameter("color", colorId);
 
         List<AhmsdlogDtlMntcQqs> res = query.getResultList();
+
+        return res;
+    }
+
+    public List<Map<String, Object>> getAllMcTypeByDocNumber(String docNumber, String mdCode) {
+        Session session = sessionFactory.openSession();
+        session.beginTransaction();
+
+        Query query = session.createNativeQuery("SELECT DISTINCT A.dsdmntqq_rsdmngqq_dsdmct_rsdmct_vmctypeid, A.dsdmntqq_rsdmngqq_dsdmct_vcolorid, G.VUGDESC\n" +
+                        "FROM ahmsdlog_dtlmntcqqs A\n" +
+                        "INNER JOIN ahmsdlog_mstunitgrps G\n" +
+                        "ON G.NID = A.dsdmntqq_rsdmngqq_msduntgp_nid " +
+                        "WHERE dsdmntqq_rsdmngqq_rsdshpqq_vdocnoshpqq = :docNum AND dsdmntqq_rsdmngqq_rsdshpqq_vmdcode = :mdcode")
+                .setParameter("docNum", docNumber)
+                .setParameter("mdcode", mdCode)
+                .setResultTransformer(AliasToEntityMapResultTransformer.INSTANCE);
+
+        List<Map<String, Object>> list = query.getResultList();
+
+        return list.stream()
+                .map(r ->  {
+                    Map<String, Object> data = new HashMap<>();
+
+                    data.put("mcType", (String) r.get("dsdmntqq_rsdmngqq_dsdmct_rsdmct_vmctypeid"));
+                    data.put("colorId", (String) r.get("dsdmntqq_rsdmngqq_dsdmct_vcolorid"));
+                    data.put("desc", (String) r.get("VUGDESC"));
+
+                    return data;
+                }).collect(Collectors.toList());
+    }
+
+    public List<Map<String, Object>> getMps(String mcType, String colorId, Integer month, Integer year) {
+        Session session = sessionFactory.openSession();
+        session.beginTransaction();
+
+        Query query = session.createNativeQuery("SELECT * FROM ahmsdlog_txnfixplans WHERE DSDMCT_RSDMCT_VMCTYPEID = :mcType AND DSDMCT_VCOLORID = :colorId AND NPRODMONTH = :month AND NPRODYEAR = :year")
+                .setParameter("mcType", mcType)
+                .setParameter("colorId", colorId)
+                .setParameter("month", month)
+                .setParameter("year", year)
+                .setResultTransformer(AliasToEntityMapResultTransformer.INSTANCE);
+
+        List<Map<String, Object>> list = query.getResultList();
+
+        return list;
+    }
+
+    public List<Map<String, Object>> getDDs(String mcType, String colorId, String docNumber) {
+        Session session = sessionFactory.openSession();
+        session.beginTransaction();
+
+        Query query = session.createNativeQuery("SELECT * FROM ahmsdlog_txnddss WHERE VMCTYPEID = :mcType AND VCOLORID = :colorId AND VDOCDPWARNA = :docNum")
+                .setParameter("mcType", mcType)
+                .setParameter("colorId", colorId)
+                .setParameter("docNum", docNumber)
+                .setResultTransformer(AliasToEntityMapResultTransformer.INSTANCE);
+
+        List<Map<String, Object>> list = query.getResultList();
+
+        return list;
+    }
+
+    public Double getSumDo(String docNumber, String mdCode, Date startDate, Date endDate, String mcType, String color) {
+        Session session = sessionFactory.openSession();
+        session.beginTransaction();
+
+        Query query = session.createNativeQuery(
+                    "SELECT\n" +
+                            "coalesce(SUM(A.ndoplnold + A.ndoplnnew) ,0) AS TOTAL\n" +
+                            "FROM ahmsdlog_dtlmntcqqs A\n" +
+                            "INNER JOIN ahmsdlog_hdrmngpldos P\n" +
+                            "ON P.rsdshpqq_vdocnoshpqq = A.dsdmntqq_rsdmngqq_rsdshpqq_vdocnoshpqq\n" +
+                            "AND P.msdqq_vmdcode = A.dsdmntqq_rsdmngqq_rsdshpqq_vmdcode\n" +
+                            "AND P.dmntn = A.dmntn\n" +
+                            "AND P.msdqq_vshipto = A.dsdmntqq_dsdshpqq_msdqq_vshipto\n" +
+                            "AND P.msdqq_vmdcode = A.dsdmntqq_dsdshpqq_msdqq_vmdcode\n" +
+                            "where A.dsdmntqq_rsdmngqq_rsdshpqq_vmdcode = :mdcode\n" +
+                            "  AND A.dsdmntqq_rsdmngqq_rsdshpqq_vdocnoshpqq = :docNum\n" +
+                            "AND A.dsdmntqq_rsdmngqq_dsdmct_rsdmct_vmctypeid = :mcType\n" +
+                            "  AND A.dsdmntqq_rsdmngqq_dsdmct_vcolorid = :color\n" +
+                            "  AND P.vstatshpqq = 'Y'\n" +
+                            "AND A.dmntn BETWEEN :startDate AND :endDate"
+                )
+                .setParameter("docNum", docNumber)
+                .setParameter("mdcode", mdCode)
+                .setParameter("startDate", startDate)
+                .setParameter("endDate", endDate)
+                .setParameter("mcType", mcType)
+                .setParameter("color", color);
+
+        Double res = ((BigDecimal) query.getSingleResult()).doubleValue();
+
+        return res;
+    }
+
+    public Double getSumPerMD(String docNumber, String mdCode) {
+        Session session = sessionFactory.openSession();
+        session.beginTransaction();
+
+        Query query = session.createNativeQuery(
+                        "select SUM(ndovinold + ndovinnew) AS TOTAL from ahmsdlog_dtlmngqqdos\n" +
+                                "WHERE rsdmngqq_rsdshpqq_vdocnoshpqq = :docNum\n" +
+                                "AND rsdmngqq_rsdshpqq_vmdcode = :mdcode"
+                )
+                .setParameter("docNum", docNumber)
+                .setParameter("mdcode", mdCode);
+
+        Double res = ((BigDecimal) query.getSingleResult()).doubleValue();
 
         return res;
     }

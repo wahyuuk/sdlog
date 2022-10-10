@@ -71,6 +71,7 @@
 <!--    <div id="ahmsdlog018ManageUploadContainer">-->
 
 <!--    </div>-->
+    <div id="ahmsdlog018p01ApprovalContainer"></div>
     <div id="ahmsdlog018ManageTableContainer">
 
     </div>
@@ -118,6 +119,7 @@
     let ahmsdlog018IsUpload = false;
     let ahmsdlog018p04ReportMcTypeData = null;
     let ahmsdlog018p05ReportByDateData = null;
+    let ahmsdlog018p01HistoryData = [];
 
     const shiptoData = [
         {
@@ -137,16 +139,103 @@
     $(document).ready(() => {
         // ahmsdlog018p05ReportByDate();
         //
-        ahmsdlog018p02ManageTable();
-        ahmsdlog018p02PembukaanDoTable();
+        // ahmsdlog018p02ManageTable();
+        // ahmsdlog018p02PembukaanDoTable();
         $('#ahmsdlog018p02MaintainDateUpdate').datetimepicker({
             format: 'DD MMM YYYY',
             viewMode: 'days',
             locale: 'en'
         });
         $('#ahmsdlog018p03UploadSubmit').attr("disabled", true);
-        ahmsdlog018p02MaintainTable();
+        // ahmsdlog018p02MaintainTable();
         // ahmsdlog018p04ReportByMCType();
+        $.ajax({
+            url: '/history',
+            type: 'POST',
+            success: (res) => {
+                const dataRes = res.rows
+                    .filter(r => r.week === 1);
+
+                $.each(dataRes, (i, v) => {
+                    let data = {
+                        mcType: v.mcType,
+                        desc: v.desc
+                    };
+
+                    for (let i = 1; i <= res.totalWeek ; i++) {
+                        const dd = res.rows
+                            .filter(r => r.week === i && r.mcType === v.mcType);
+
+                        data[`week${i}Nas`] = dd.reduce((a, b) => a + b.nas, 0);
+                        data[`week${i}Md`] = dd.reduce((a, b) => a + b.perMd, 0);
+                    }
+
+                    ahmsdlog018p01HistoryData.push(data);
+                });
+
+                let dataTable = [];
+
+                $.each(ahmsdlog018p01HistoryData, (i, v) => {
+                   if(!dataTable.length) {
+                       dataTable.push(v);
+                   }  else if(i === ahmsdlog018p01HistoryData){
+                       let isAlready = false
+                       $.each(dataTable, (j, vv) => {
+                          if(vv.desc === v.desc) {
+                              isAlready = true;
+                          }
+                       });
+
+                       if(!isAlready) {
+                           dataTable.push(v);
+                       }
+                   }
+                });
+
+                let template = `<table id="ahmsdlog018p02HistoryTable" data-side-pagination="client" data-server-sort="false">
+                                <thead>
+                                <tr>
+                                <th rowspan="2" data-valign="middle" data-sortable="true" data-halign="center" data-field="desc">Type</th>
+                            `;
+                for (let i = 1; i <= res.totalWeek ; i++) {
+                    template += `
+                        <th colspan="2" data-valign="middle" data-sortable="false" data-halign="center">Week ${i}</th>
+                    `;
+                }
+                template += `</tr><tr>`;
+
+                for (let i = 1; i <= res.totalWeek ; i++) {
+                    template += `
+                        <th data-valign="middle" data-sortable="true" data-halign="center" data-field="week${i}Nas">National</th>
+                        <th data-valign="middle" data-sortable="true" data-halign="center" data-field="week${i}Md">Per MD</th>
+                    `;
+                }
+                template += `</tr>`;
+                template += `</thead></table>`;
+
+                $('#ahmsdlog018p01ApprovalContainer').html(template);
+                $('#ahmsdlog018p02HistoryTable').bootstrapTable({
+                    data: dataTable
+                });
+
+                // let footer = '<tr>'
+                //
+                // for (let i = 1; i <= res.totalWeek ; i++) {
+                //     const total = dataTable
+                //         .reduce((a, b) => a + b[`week${i}Nas`], 0);
+                //     const totalMd = dataTable
+                //         .reduce((a, b) => a + b[`week${i}Md`], 0);
+                //     footer += `
+                //         <th>${total}</th>
+                //         <th>${totalMd}</th>
+                //     `;
+                // }
+                //
+                // footer += '</tr>';
+                //
+                // $('#ahmsdlog018p02HistoryTable tbody tr:last').after(footer);
+            }
+        })
     });
 
     function ahmsdlog018p05ReportByDate() {
